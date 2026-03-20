@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Safety Placard Generator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Heebo:wght@400;700;900&family=Roboto:wght@400;700;900&display=swap');
+
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .a4-page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm;
+            margin: 20px auto;
+            background: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .hebrew-text { font-family: 'Heebo', sans-serif; direction: rtl; }
+        .arabic-text { font-family: 'Cairo', sans-serif; direction: rtl; }
+        .russian-text, .english-text { font-family: 'Roboto', sans-serif; direction: ltr; }
+
+        /* GHS Pictogram Styles */
+        .ghs-diamond {
+            width: 100px;
+            height: 100px;
+            border: 4px solid #dc2626;
+            transform: rotate(45deg);
+            margin: 15px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .ghs-content {
+            transform: rotate(-45deg);
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .circle-symbol {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #2563eb;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 5px;
+        }
+
+        .ghs-diamond-sm {
+            width: 45px;
+            height: 45px;
+            border: 2px solid #dc2626;
+            transform: rotate(45deg);
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+        }
+        
+        .ghs-content-sm {
+            transform: rotate(-45deg);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Print adjustments */
+        @media print {
+            body { background: none; margin: 0; }
+            #upload-screen { display: none !important; }
+            #control-bar { display: none !important; }
+            #placard-container { display: block !important; }
+            .a4-page {
+                margin: 0;
+                box-shadow: none;
+                page-break-after: always;
+                width: 100%;
+                height: 100vh;
+            }
+            @page { size: A4; margin: 0; }
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+
+        /* Spinner animation */
+        .loader {
+            border-top-color: #3b82f6;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Upload Screen -->
+    <div id="upload-screen" class="min-h-screen flex items-center justify-center bg-gray-100 p-6">
+        <div class="bg-white rounded-2xl shadow-xl max-w-xl w-full p-8 text-center">
+            <div class="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i data-lucide="file-text" class="w-10 h-10"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">AI Safety Placard Generator</h1>
+            <p class="text-gray-600 mb-8">Upload an SDS (Safety Data Sheet) in PDF format. Our AI will automatically extract the hazards and generate a 4-language A4 safety placard.</p>
+            
+            <div class="border-2 border-dashed border-gray-300 rounded-xl p-10 hover:bg-gray-50 transition relative group">
+                <input type="file" id="pdf-upload" accept="application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                <i data-lucide="upload-cloud" class="w-12 h-12 text-gray-400 mx-auto mb-4 group-hover:text-blue-500 transition"></i>
+                <p class="text-gray-600 font-semibold group-hover:text-blue-600 transition">Click to select or drag and drop a PDF</p>
+                <p class="text-sm text-gray-400 mt-2" id="file-name">No file selected</p>
+            </div>
+
+            <!-- Pictogram Selection Mode -->
+            <div class="mt-6 mb-2 border border-gray-200 rounded-xl p-4 bg-gray-50 text-left">
+                <label class="block text-gray-800 font-bold mb-3 text-center">GHS Pictograms Source:</label>
+                <div class="flex gap-6 justify-center mb-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="picto-mode" value="auto" checked class="form-radio text-blue-600 w-5 h-5">
+                        <span class="font-semibold text-gray-700">Auto-detect from SDS</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="picto-mode" value="manual" class="form-radio text-blue-600 w-5 h-5">
+                        <span class="font-semibold text-gray-700">Manual Selection</span>
+                    </label>
+                </div>
+                
+                <!-- Manual Picker UI -->
+                <div id="manual-pictograms-ui" class="hidden grid grid-cols-3 sm:grid-cols-5 gap-3 mt-4 pt-4 border-t border-gray-200">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+
+            <button id="generate-btn" disabled class="mt-8 w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-xl transition shadow-lg flex items-center justify-center gap-2">
+                <span>Generate Placards</span>
+                <i data-lucide="wand-2"></i>
+            </button>
+
+            <!-- Loading State -->
+            <div id="loading-state" class="hidden mt-6 flex-col items-center">
+                <div class="loader border-4 border-gray-200 rounded-full w-12 h-12 mb-4"></div>
+                <p class="text-blue-600 font-semibold animate-pulse" id="loading-text">Analyzing SDS PDF with Gemini AI...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="error-state" class="hidden mt-6 bg-red-50 text-red-700 p-4 rounded-lg border border-red-200 text-sm text-left">
+                <p class="font-bold flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4"></i> Error</p>
+                <p id="error-message" class="mt-1 font-mono break-words"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Control Bar (Visible when placards are generated) -->
+    <div id="control-bar" class="hidden fixed top-0 left-0 w-full bg-white border-b border-gray-200 p-4 flex justify-between items-center z-50 shadow-md">
+        <button onclick="location.reload()" class="text-gray-600 hover:text-gray-900 font-semibold flex items-center gap-2 transition">
+            <i data-lucide="arrow-left"></i> Start Over
+        </button>
+        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2 transition shadow">
+            <i data-lucide="printer"></i> Print / Save as PDF
+        </button>
+    </div>
+
+    <!-- Placard Container (Will hold the 4 pages) -->
+    <div id="placard-container" class="hidden pt-20 pb-10">
+        <!-- Rendered pages injected here -->
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const fileInput = document.getElementById('pdf-upload');
+        const fileNameDisplay = document.getElementById('file-name');
+        const generateBtn = document.getElementById('generate-btn');
+        const uploadScreen = document.getElementById('upload-screen');
+        const controlBar = document.getElementById('control-bar');
+        const placardContainer = document.getElementById('placard-container');
+        const loadingState = document.getElementById('loading-state');
+        const loadingText = document.getElementById('loading-text');
+        const errorState = document.getElementById('error-state');
+        const errorMessage = document.getElementById('error-message');
+
+        let selectedFileBase64 = null;
+
+        // SVG Dictionary for GHS Pictograms
+        const GHS_ICONS = {
+            "GHS01": `<svg viewBox="0 0 100 100" class="w-full h-full text-black fill-current"><path d="M45 45 L20 20 M55 45 L80 20 M50 55 L50 90 M30 60 L15 75 M70 60 L85 75" stroke="black" stroke-width="4"/><circle cx="50" cy="50" r="12"/></svg>`,
+            "GHS02": `<svg viewBox="0 0 100 100" class="w-full h-full text-black fill-current"><path d="M50 90 C20 70 20 45 50 15 C80 45 80 70 50 90" fill="none"/><path d="M50 85 C35 70 30 50 50 20 C60 40 75 60 50 85 Z" fill="black"/><path d="M50 20 C45 35 40 45 50 55 C60 45 55 35 50 20" fill="white"/><path d="M50 88 C30 65 35 45 50 25 C65 45 70 65 50 88" fill="black"/></svg>`,
+            "GHS03": `<svg viewBox="0 0 100 100" class="w-full h-full text-black fill-current"><path d="M50 70 C30 50 35 30 50 15 C65 30 70 50 50 70 Z" fill="black"/><circle cx="50" cy="55" r="12" fill="white" stroke="black" stroke-width="4"/></svg>`,
+            "GHS04": `<svg viewBox="0 0 100 100" class="w-full h-full text-black fill-current"><rect x="35" y="25" width="30" height="60" rx="10" /><rect x="45" y="15" width="10" height="10" /></svg>`,
+            "GHS05": `<svg viewBox="0 0 100 100" class="w-full h-full text-black fill-current"><rect x="55" y="10" width="40" height="5" rx="1" /><path d="M75 15 Q85 25 85 40" stroke="black" stroke-width="2" fill="none"/><path d="M20 5 L30 5 L35 25 L15 25 Z" transform="rotate(-30 25 15)" /><circle cx="30" cy="35" r="3" /><circle cx="35" cy="45" r="3" /><path d="M10 50 Q20 40 30 50 Q40 40 50 50 L50 60 L10 60 Z" /><path d="M25 50 Q30 45 35 50" stroke="white" stroke-width="2" fill="none"/></svg>`,
+            "GHS06": `<svg viewBox="0 0 100 100" class="w-full h-full text-black fill-current"><path d="M50 20 C35 20 25 30 25 45 C25 55 30 65 40 70 L40 75 L35 80 L65 80 L60 75 L60 70 C70 65 75 55 75 45 C75 30 65 20 50 20 Z M35 45 C35 40 40 40 40 45 C40 50 35 50 35 45 Z M65 45 C65 40 60 40 60 45 C60 50 65 50 65 45 Z M50 60 L45 65 L55 65 Z" /><path d="M40 75 L35 85 L65 85 L60 75" stroke="black" stroke-width="2" fill="none"/></svg>`,
+            "GHS07": `<svg viewBox="0 0 100 100" class="w-full h-full text-black fill-current"><path d="M45 25 L55 25 L53 65 L47 65 Z" /><circle cx="50" cy="80" r="6" /></svg>`,
+            "GHS08": `<svg viewBox="0 0 100 100" class="w-full h-full text-black fill-current"><path d="M50 20 Q70 20 75 40 Q80 60 50 90 Q20 60 25 40 Q30 20 50 20 Z" fill="none" stroke="black" stroke-width="0"/><path d="M50 35 L53 45 L63 45 L55 53 L58 63 L50 55 L42 63 L45 53 L37 45 L47 45 Z" /><path d="M50 25 C40 25 35 35 35 45 C35 65 50 85 50 85 C50 85 65 65 65 45 C65 35 60 25 50 25" fill="black"/><path d="M50 35 L53 45 L63 45 L55 53 L58 63 L50 55 L42 63 L45 53 L37 45 L47 45 Z" fill="white"/></svg>`,
+            "GHS09": `<svg viewBox="0 0 100 100" class="w-full h-full text-black fill-current"><path d="M50 20 L20 50 L50 80 L80 50 Z" fill="none"/><path d="M30 60 L30 40 L45 40 L45 60" stroke="black" stroke-width="2" fill="none"/><path d="M30 40 Q37 30 45 40" stroke="black" stroke-width="2" fill="none"/><path d="M60 60 Q70 50 80 60 Q70 70 60 60" stroke="black" stroke-width="2" fill="none"/><path d="M60 60 L55 65 L55 55 Z" fill="black"/></svg>`
+        };
+
+        // Static translations for the UI elements
+        const UI_TRANSLATIONS = {
+            english: {
+                danger: "DANGER ! DANGER",
+                warningsTitle: "SEVERE HAZARDS",
+                ppeTitle: "MANDATORY PERSONAL PROTECTIVE EQUIPMENT (PPE)",
+                firstAidTitle: "FIRST AID - IN EMERGENCY",
+                skin: "Skin:", eyes: "Eyes:", ingestion: "Ingestion:", inhalation: "Inhalation:",
+                poisonCenterTitle: "National Poison Information Center (Rambam)",
+                whoToCall: "Who to call? (04-7771900)",
+                whoToCallDesc: "In case of suspected poisoning, exposure to chemicals. Professional advice 24/7.",
+                madaCall: "When to call 101 (MADA)?",
+                madaCallDesc: "In an immediate emergency: difficulty breathing, loss of consciousness, or collapse.",
+                supplier: "Supplier:",
+                medicalAdvice: "In any case of exposure, seek medical advice.",
+                emergency: "Emergency: 101 (MADA)"
+            },
+            russian: {
+                danger: "ОПАСНО ! DANGER",
+                warningsTitle: "ОСНОВНЫЕ ОПАСНОСТИ",
+                ppeTitle: "СРЕДСТВА ИНДИВИДУАЛЬНОЙ ЗАЩИТЫ (СИЗ)",
+                firstAidTitle: "ПЕРВАЯ ПОМОЩЬ",
+                skin: "Кожа:", eyes: "Глаза:", ingestion: "Проглатывание:", inhalation: "Вдыхание:",
+                poisonCenterTitle: "Центр информации об отравлениях (Рамбам)",
+                whoToCall: "Куда звонить? (04-7771900)",
+                whoToCallDesc: "Подозрение на отравление, воздействие химикатов. Консультация 24/7.",
+                madaCall: "Когда звонить 101? (Скорая)",
+                madaCallDesc: "Экстренные случаи: затрудненное дыхание, потеря сознания, коллапс.",
+                supplier: "Поставщик:",
+                medicalAdvice: "При любом воздействии обратиться к врачу",
+                emergency: "Emergency: 101"
+            },
+            hebrew: {
+                danger: "סכנה ! DANGER",
+                warningsTitle: "אזהרות חמורות",
+                ppeTitle: "ציוד מגן אישי חובה (PPE)",
+                firstAidTitle: "עזרה ראשונה - במקרה חירום",
+                skin: "מגע בעור:", eyes: "מגע בעיניים:", ingestion: "בליעה:", inhalation: "שאיפה:",
+                poisonCenterTitle: "המרכז הארצי למידע בהרעלות (רמב\"ם)",
+                whoToCall: "למי להתקשר? (04-7771900)",
+                whoToCallDesc: "במקרה של חשד להרעלה, חשיפה לכימיקלים. ייעוץ מקצועי 24/7.",
+                madaCall: "מתי להתקשר ל-101? (מד\"א)",
+                madaCallDesc: "במקרה חירום מיידי: קשיי נשימה, אובדן הכרה או התמוטטות.",
+                supplier: "ספק:",
+                medicalAdvice: "בכל מקרה של חשיפה יש לפנות לייעוץ רפואי",
+                emergency: "חרום: 101 (מד\"א)"
+            },
+            arabic: {
+                danger: "خطر ! DANGER",
+                warningsTitle: "تحذيرات شديدة",
+                ppeTitle: "معدات الحماية الشخصية الإلزامية (PPE)",
+                firstAidTitle: "الإسعافات الأولية - في حالات الطوارئ",
+                skin: "الجلد:", eyes: "العيون:", ingestion: "الابتلاع:", inhalation: "الاستنشاق:",
+                poisonCenterTitle: "المركز الوطني لمعلومات السموم (رمبام)",
+                whoToCall: "بمن تتصل؟ (04-7771900)",
+                whoToCallDesc: "في حالة الاشتباه في التسمم أو التعرض للمواد الكيميائية. استشارة مهنية على مدار الساعة.",
+                madaCall: "متى تتصل بـ 101 (نجمة داود الحمراء)؟",
+                madaCallDesc: "في حالات الطوارئ الفورية: صعوبة في التنفس، فقدان الوعي، أو الانهيار.",
+                supplier: "المورد:",
+                medicalAdvice: "في جميع حالات التعرض، اطلب استشارة طبية.",
+                emergency: "طوارئ: 101"
+            }
+        };
+
+        // Schema for Gemini API
+        const languageObjectSchema = {
+            type: "OBJECT",
+            properties: {
+                productName: { type: "STRING" },
+                description: { type: "STRING" },
+                hazards: { type: "ARRAY", items: { type: "STRING" } },
+                pictogramText: { type: "STRING" },
+                ppe: {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            icon: { type: "STRING" }, // e.g., glasses, hand-metal, shirt, wind
+                            text: { type: "STRING" }
+                        }
+                    }
+                },
+                firstAid: {
+                    type: "OBJECT",
+                    properties: {
+                        skin: { type: "STRING" },
+                        eyes: { type: "STRING" },
+                        ingestion: { type: "STRING" },
+                        inhalation: { type: "STRING" }
+                    }
+                },
+                supplierName: { type: "STRING" }
+            }
+        };
+
+        const responseSchema = {
+            type: "OBJECT",
+            properties: {
+                unNumber: { type: "STRING" },
+                pictograms: {
+                    type: "ARRAY",
+                    items: { type: "STRING", enum: ["GHS02", "GHS05", "GHS06", "GHS07", "GHS08", "GHS09"] }
+                },
+                english: languageObjectSchema,
+                russian: languageObjectSchema,
+                hebrew: languageObjectSchema,
+                arabic: languageObjectSchema
+            }
+        };
+
+        // Manual Pictogram Selection Logic
+        const pictoRadios = document.querySelectorAll('input[name="picto-mode"]');
+        const manualUi = document.getElementById('manual-pictograms-ui');
+        let selectedManualPictos = new Set();
+
+        const ghsNames = {
+            "GHS01": "Explosive", "GHS02": "Flammable", "GHS03": "Oxidizer",
+            "GHS04": "Gas", "GHS05": "Corrosive", "GHS06": "Toxic",
+            "GHS07": "Harmful", "GHS08": "Health Hazard", "GHS09": "Environment"
+        };
+
+        let pictoHtmlOptions = '';
+        for (let code in GHS_ICONS) {
+            pictoHtmlOptions += `
+                <div class="picto-card cursor-pointer border-2 border-gray-200 rounded-lg p-2 flex flex-col items-center hover:bg-blue-50 transition select-none" data-code="${code}">
+                    <div class="ghs-diamond-sm mb-2">
+                        <div class="ghs-content-sm">
+                            ${GHS_ICONS[code]}
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-bold text-center text-gray-700 leading-tight">${ghsNames[code]}</span>
+                </div>
+            `;
+        }
+        manualUi.innerHTML = pictoHtmlOptions;
+
+        document.querySelectorAll('.picto-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const code = card.dataset.code;
+                if (selectedManualPictos.has(code)) {
+                    selectedManualPictos.delete(code);
+                    card.classList.remove('border-blue-500', 'bg-blue-100');
+                    card.classList.add('border-gray-200');
+                } else {
+                    selectedManualPictos.add(code);
+                    card.classList.remove('border-gray-200');
+                    card.classList.add('border-blue-500', 'bg-blue-100');
+                }
+            });
+        });
+
+        pictoRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.value === 'manual') {
+                    manualUi.classList.remove('hidden');
+                } else {
+                    manualUi.classList.add('hidden');
+                }
+            });
+        });
+
+        // File handling
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && file.type === "application/pdf") {
+                fileNameDisplay.textContent = file.name;
+                generateBtn.disabled = false;
+                
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    selectedFileBase64 = evt.target.result.split(',')[1];
+                };
+                reader.readAsDataURL(file);
+            } else {
+                fileNameDisplay.textContent = "Please select a valid PDF file.";
+                generateBtn.disabled = true;
+                selectedFileBase64 = null;
+            }
+        });
+
+        // API Call with Automatic Model Fallback
+        async function fetchGeminiData(base64Data, modelIndex = 0, attempt = 1) {
+            const apiKey = "AIzaSyB8t900vAQ2kR6jM5FPhRwmZfxwOWB_9j4";
+            
+            // List of models to try sequentially
+            const availableModels = [
+                "gemini-2.0-flash",
+                "gemini-1.5-flash",
+                "gemini-2.5-flash"
+            ];
+
+            if (modelIndex >= availableModels.length) {
+                throw new Error("All AI models failed. The API key might be invalid or quota exceeded.");
+            }
+
+            const modelName = availableModels[modelIndex];
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+            
+            loadingText.textContent = `Analyzing with ${modelName}... (Attempt ${attempt})`;
+
+            const prompt = `You are a hazardous materials safety expert. I have uploaded an SDS (Safety Data Sheet) PDF. 
+            Extract the safety information and format it exactly according to the schema provided.
+            Translate the output into English, Russian, Hebrew, and Arabic.
+            Keep hazard warnings concise but impactful (like "Causes severe burns!").
+            For PPE, select exactly 4 mandatory items. Use valid Lucide icon names for 'icon' (e.g., 'glasses', 'hand-metal', 'shirt', 'wind', 'footprints').
+            Identify the correct UN number. If none, write "N/A".
+            Identify the GHS pictograms required (GHS02, GHS05, GHS06, GHS07, GHS08, GHS09).`;
+
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: [
+                        { text: prompt },
+                        { inlineData: { mimeType: "application/pdf", data: base64Data } }
+                    ]
+                }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: responseSchema
+                }
+            };
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    // If 404 (Model not found) or 403 (Forbidden for this model), immediately fallback to the next model
+                    if (response.status === 404 || response.status === 403) {
+                        console.warn(`Model ${modelName} returned ${response.status}. Falling back to next model...`);
+                        return fetchGeminiData(base64Data, modelIndex + 1, 1);
+                    }
+
+                    // Otherwise, read error details
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`API Error (${response.status}): ${errorData.error?.message || response.statusText}`);
+                }
+                
+                const json = await response.json();
+                return JSON.parse(json.candidates[0].content.parts[0].text);
+                
+            } catch (error) {
+                // Network errors or 5xx Server Errors -> Retry the same model using exponential backoff
+                if (attempt < 3 && error.message !== "All AI models failed. The API key might be invalid or quota exceeded.") {
+                    const delay = Math.pow(2, attempt - 1) * 1000;
+                    console.log(`Error on ${modelName}: ${error.message}. Retrying in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return fetchGeminiData(base64Data, modelIndex, attempt + 1);
+                } 
+                // Exhausted retries for this model, move to next model
+                else if (modelIndex < availableModels.length - 1) {
+                    console.warn(`Model ${modelName} failed after retries. Moving to next model.`);
+                    return fetchGeminiData(base64Data, modelIndex + 1, 1);
+                } 
+                // Exhausted all models and retries
+                else {
+                    throw error;
+                }
+            }
+        }
+
+        // Generate HTML for a single language page
+        function renderPageHTML(lang, data, unNumber, pictograms) {
+            const ui = UI_TRANSLATIONS[lang];
+            const isRTL = (lang === 'hebrew' || lang === 'arabic');
+            const dirClass = isRTL ? 'flex-row-reverse' : 'flex-row';
+            const alignClass = isRTL ? 'text-right' : 'text-left';
+            const marginClass = isRTL ? 'ml-4' : 'mr-4';
+            const fontClass = `${lang}-text`;
+
+            let hazardItems = data.hazards.map(h => `<li>${h}</li>`).join('');
+            
+            let ppeItems = data.ppe.slice(0,4).map(p => `
+                <div class="flex flex-col items-center w-1/4">
+                    <div class="circle-symbol"><i data-lucide="${p.icon || 'shield'}" size="32"></i></div>
+                    <span class="font-bold leading-tight">${p.text}</span>
+                </div>
+            `).join('');
+
+            let firstAidItems = '';
+            const faMap = [
+                { icon: 'eye', title: ui.eyes, text: data.firstAid.eyes },
+                { icon: 'droplets', title: ui.skin, text: data.firstAid.skin },
+                { icon: 'skull', title: ui.ingestion, text: data.firstAid.ingestion },
+                { icon: 'wind', title: ui.inhalation, text: data.firstAid.inhalation }
+            ];
+            
+            faMap.forEach(fa => {
+                if (fa.text && fa.text.trim() !== "") {
+                    firstAidItems += `
+                    <div class="flex items-center gap-4">
+                        <div class="bg-green-600 text-white p-2 rounded-full"><i data-lucide="${fa.icon}" size="24"></i></div>
+                        <div>
+                            <span class="font-bold text-green-800 block">${fa.title}</span>
+                            ${fa.text}
+                        </div>
+                    </div>`;
+                }
+            });
+
+            let pictoHtml = pictograms.map(code => `
+                <div class="ghs-diamond">
+                    <div class="ghs-content">
+                        ${GHS_ICONS[code] || ''}
+                    </div>
+                </div>
+            `).join('');
+
+            return `
+            <div class="a4-page ${fontClass} border-t-8 border-red-600">
+                <!-- Header -->
+                <header class="text-center border-b-4 border-black pb-4 mb-6">
+                    <h1 class="text-5xl font-black text-red-600 uppercase mb-2">${ui.danger}</h1>
+                    <div class="flex items-center justify-center gap-4">
+                        <div class="bg-black text-white text-3xl font-bold py-2 px-4 inline-block rounded">
+                            ${data.productName}
+                        </div>
+                        <div class="border-2 border-black text-black text-3xl font-bold py-2 px-4 inline-block rounded">
+                            UN ${unNumber}
+                        </div>
+                    </div>
+                    <p class="text-xl mt-2 font-bold text-gray-700">${data.description}</p>
+                </header>
+
+                <!-- Hazards -->
+                <div class="flex ${dirClass} justify-between items-start mb-6 bg-red-50 p-4 border-2 border-red-500 rounded-lg">
+                    <div class="flex-1 ${alignClass}">
+                        <h2 class="text-3xl font-bold text-red-700 mb-4 underline">${ui.warningsTitle}</h2>
+                        <ul class="list-disc list-inside space-y-2 text-xl font-bold text-gray-900">
+                            ${hazardItems}
+                        </ul>
+                    </div>
+                    <div class="flex flex-col items-center justify-center ${marginClass} gap-4 w-1/3">
+                        <div class="flex flex-col gap-4">
+                            ${pictoHtml}
+                        </div>
+                        <div class="text-xs font-bold mt-2 text-center text-red-700 uppercase">${data.pictogramText}</div>
+                    </div>
+                </div>
+
+                <!-- PPE -->
+                <div class="mb-6">
+                    <div class="bg-blue-600 text-white p-2 rounded-t-lg">
+                        <h3 class="text-2xl font-bold text-center">${ui.ppeTitle}</h3>
+                    </div>
+                    <div class="border-2 border-blue-600 border-t-0 p-4 rounded-b-lg flex flex-wrap justify-around text-center">
+                        ${ppeItems}
+                    </div>
+                </div>
+
+                <!-- First Aid -->
+                <div class="mb-6 flex-grow">
+                    <div class="bg-green-600 text-white p-2 rounded-t-lg">
+                        <h3 class="text-2xl font-bold text-center">${ui.firstAidTitle}</h3>
+                    </div>
+                    <div class="border-2 border-green-600 border-t-0 p-6 rounded-b-lg bg-green-50">
+                        <div class="grid grid-cols-1 gap-4 text-lg">
+                            ${firstAidItems}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Poison Info -->
+                <div class="mb-2 bg-yellow-50 border-2 border-yellow-600 rounded-lg p-4 shadow-sm flex-grow">
+                    <div class="flex items-center justify-between border-b border-yellow-300 pb-2 mb-3">
+                        <h3 class="text-xl font-bold text-yellow-900 flex items-center">
+                            <i data-lucide="phone-call" class="inline-block ${isRTL ? 'ml-2' : 'mr-2'}"></i>
+                            ${ui.poisonCenterTitle}
+                        </h3>
+                        <span class="text-2xl font-black text-red-600">04-7771900</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div class="bg-white p-3 rounded border border-yellow-200 shadow-sm ${alignClass}">
+                            <span class="block font-bold text-blue-700 mb-1 text-lg">${ui.whoToCall}</span>
+                            <p>${ui.whoToCallDesc}</p>
+                        </div>
+                        <div class="bg-white p-3 rounded border border-red-200 shadow-sm ${alignClass}">
+                            <span class="block font-bold text-red-700 mb-1 text-lg">${ui.madaCall}</span>
+                            <p>${ui.madaCallDesc}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="mt-auto border-t-2 border-gray-300 pt-4 text-center text-gray-600 text-sm">
+                    <div class="flex justify-between items-center ${dirClass}">
+                        <span>${ui.supplier} ${data.supplierName}</span>
+                        <span>${ui.medicalAdvice}</span>
+                        <span>${ui.emergency}</span>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        // Main execution
+        generateBtn.addEventListener('click', async () => {
+            if (!selectedFileBase64) return;
+            
+            const pictoMode = document.querySelector('input[name="picto-mode"]:checked').value;
+            
+            generateBtn.classList.add('hidden');
+            errorState.classList.add('hidden');
+            loadingState.classList.remove('hidden');
+            loadingState.classList.add('flex');
+
+            try {
+                const apiResult = await fetchGeminiData(selectedFileBase64);
+                
+                let finalPictograms = [];
+                if (pictoMode === 'manual') {
+                    finalPictograms = Array.from(selectedManualPictos);
+                } else {
+                    finalPictograms = apiResult.pictograms || [];
+                }
+                
+                let allPagesHtml = '';
+                const languages = ['english', 'russian', 'hebrew', 'arabic'];
+                
+                languages.forEach(lang => {
+                    if(apiResult[lang]) {
+                        allPagesHtml += renderPageHTML(lang, apiResult[lang], apiResult.unNumber, finalPictograms);
+                    }
+                });
+
+                placardContainer.innerHTML = allPagesHtml;
+                lucide.createIcons();
+
+                uploadScreen.classList.add('hidden');
+                loadingState.classList.add('hidden');
+                controlBar.classList.remove('hidden');
+                placardContainer.classList.remove('hidden');
+                
+            } catch (err) {
+                console.error(err);
+                errorMessage.textContent = err.message || "Failed to process the PDF. Please check your connection or try another file.";
+                loadingState.classList.add('hidden');
+                loadingState.classList.remove('flex');
+                generateBtn.classList.remove('hidden');
+                errorState.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
