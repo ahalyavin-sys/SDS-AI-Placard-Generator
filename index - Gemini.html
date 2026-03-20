@@ -189,8 +189,30 @@
         <!-- Rendered pages injected here -->
     </div>
 
-    <script>
-        lucide.createIcons();
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-analytics.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD6Xp-7CVOjuBUErScl9KoEzpoaaKLp7Tw",
+            authDomain: "sds-ai-placard-generator.firebaseapp.com",
+            projectId: "sds-ai-placard-generator",
+            storageBucket: "sds-ai-placard-generator.firebasestorage.app",
+            messagingSenderId: "664919671895",
+            appId: "1:664919671895:web:6b8ad1a466ef3b7fdb8f12",
+            measurementId: "G-Y3CP1FBBR0"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+
+        // --- Application Logic ---
+        
+        // Initialize Lucide icons (Since we changed the script to type="module", we use window.lucide)
+        window.lucide.createIcons();
 
         const fileInput = document.getElementById('pdf-upload');
         const fileNameDisplay = document.getElementById('file-name');
@@ -646,7 +668,7 @@
                 });
 
                 placardContainer.innerHTML = allPagesHtml;
-                lucide.createIcons();
+                window.lucide.createIcons();
 
                 uploadScreen.classList.add('hidden');
                 loadingState.classList.add('hidden');
