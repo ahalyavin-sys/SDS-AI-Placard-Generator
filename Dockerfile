@@ -1,9 +1,9 @@
 # Use standard lightweight Nginx image to serve static files
 FROM nginx:alpine
 
-# Copy the HTML file to the default Nginx public folder
-# We rename it to index.html so it serves as the default page
-COPY index.html /usr/share/nginx/html/index.html
+# Copy ALL files from your repository (including index.html and the images folder)
+# to the Nginx public folder
+COPY . /usr/share/nginx/html/
 
 # Expose port 8080 (Cloud Run's default expected port)
 EXPOSE 8080
