@@ -1,627 +1,1548 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Safety Placard Generator</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Heebo:wght@400;700;900&family=Roboto:wght@400;700;900&display=swap');
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDS AI Safety Placard Generator</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Arial:wght@400;700;900&family=Cairo:wght@400;700;900&family=Heebo:wght@400;700;900&display=swap");
 
-        body {
-            background-color: #f3f4f6;
-            font-family: 'Roboto', sans-serif;
-        }
+    :root {
+      --ink: #111827;
+      --muted: #5b6472;
+      --line: #d6dbe4;
+      --paper: #ffffff;
+      --screen: #eef2f6;
+      --red: #d31212;
+      --red-dark: #8e0e0e;
+      --blue: #135da8;
+      --green: #118049;
+      --yellow: #f4cf32;
+      --panel: #f8fafc;
+    }
 
-        .a4-page {
-            width: 210mm;
-            min-height: 297mm;
-            padding: 15mm;
-            margin: 20px auto;
-            background: white;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
+    * { box-sizing: border-box; }
 
-        .hebrew-text { font-family: 'Heebo', sans-serif; direction: rtl; }
-        .arabic-text { font-family: 'Cairo', sans-serif; direction: rtl; }
-        .russian-text, .english-text { font-family: 'Roboto', sans-serif; direction: ltr; }
+    body {
+      margin: 0;
+      background: var(--screen);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
 
-        .circle-symbol {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background-color: #2563eb;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 5px;
-        }
+    button, input, textarea, select { font: inherit; }
 
-        /* Print adjustments */
-        @media print {
-            body { background: none; margin: 0; }
-            #upload-screen { display: none !important; }
-            #control-bar { display: none !important; }
-            #placard-container { display: block !important; }
-            .a4-page {
-                margin: 0;
-                box-shadow: none;
-                page-break-after: always;
-                width: 100%;
-                height: 100vh;
-            }
-            @page { size: A4; margin: 0; }
-            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        }
+    .app-shell {
+      display: grid;
+      grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+      min-height: 100vh;
+    }
 
-        /* Spinner animation */
-        .loader {
-            border-top-color: #3b82f6;
-            -webkit-animation: spinner 1.5s linear infinite;
-            animation: spinner 1.5s linear infinite;
-        }
-        @keyframes spinner {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+    .side-panel {
+      background: #ffffff;
+      border-right: 1px solid var(--line);
+      padding: 24px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      background: var(--red);
+      color: #fff;
+      font-weight: 900;
+      border: 3px solid #fff;
+      outline: 2px solid var(--red);
+      transform: rotate(45deg);
+    }
+
+    .brand-mark span { transform: rotate(-45deg); }
+
+    h1 {
+      font-size: 22px;
+      line-height: 1.1;
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+      margin: 16px 0;
+    }
+
+    .field label {
+      color: #273244;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .field input,
+    .field textarea,
+    .field select {
+      width: 100%;
+      border: 1px solid #c7ced9;
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      padding: 10px 11px;
+      outline: none;
+    }
+
+    .field textarea {
+      min-height: 82px;
+      resize: vertical;
+      line-height: 1.35;
+    }
+
+    .upload-zone {
+      display: grid;
+      place-items: center;
+      min-height: 148px;
+      padding: 18px;
+      border: 2px dashed #9ba7b7;
+      border-radius: 8px;
+      background: #f7f9fc;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .upload-zone input { display: none; }
+
+    .upload-icon {
+      font-size: 32px;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 7px;
+      padding: 11px 12px;
+      font-weight: 900;
+      cursor: pointer;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: .55;
+    }
+
+    .btn-primary { background: var(--blue); color: #fff; }
+    .btn-secondary { background: #e8edf4; color: #182235; }
+    .btn-danger { background: var(--red); color: #fff; }
+
+    .status {
+      display: none;
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 7px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .status.show { display: block; }
+    .status.busy { background: #eef6ff; color: #0b5598; border: 1px solid #bad8f5; }
+    .status.error { background: #fff0f0; color: #9c1111; border: 1px solid #f3b9b9; }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 20px;
+    }
+
+    .tab {
+      border: 1px solid #c7ced9;
+      background: #fff;
+      color: #273244;
+      border-radius: 7px;
+      padding: 8px 6px;
+      font-weight: 800;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .tab.active {
+      background: #182235;
+      color: #fff;
+      border-color: #182235;
+    }
+
+    .edit-panel { display: none; }
+    .edit-panel.active { display: block; }
+
+    .pictogram-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .picto-choice {
+      border: 2px solid #cfd6e0;
+      border-radius: 7px;
+      background: #fff;
+      padding: 7px;
+      min-height: 94px;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .picto-choice.selected {
+      border-color: var(--blue);
+      box-shadow: inset 0 0 0 2px #d4e8fb;
+      background: #f0f7ff;
+    }
+
+    .picto-choice img {
+      width: 46px;
+      height: 46px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto 5px;
+    }
+
+    .picto-choice span {
+      display: block;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1.15;
+    }
+
+    .preview-area {
+      padding: 18px;
+      overflow: auto;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin: 0 auto 16px;
+      max-width: 980px;
+    }
+
+    .toolbar-title {
+      font-weight: 900;
+      color: #273244;
+    }
+
+    .pages {
+      display: grid;
+      gap: 22px;
+      justify-items: center;
+    }
+
+    .empty-state {
+      display: grid;
+      place-items: center;
+      min-height: calc(100vh - 36px);
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .empty-state strong {
+      display: block;
+      color: #273244;
+      font-size: 20px;
+      margin-bottom: 7px;
+    }
+
+    .placard {
+      width: 210mm;
+      min-height: 297mm;
+      background: var(--paper);
+      color: #000;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, .18);
+      padding: 7mm;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto auto;
+      gap: 3.5mm;
+      border: 1px solid #b9c0ca;
+    }
+
+    .placard.rtl {
+      direction: rtl;
+      font-family: Heebo, Cairo, Arial, sans-serif;
+    }
+
+    .placard.arabic { font-family: Cairo, Arial, sans-serif; }
+    .placard.hebrew { font-family: Heebo, Arial, sans-serif; }
+
+    .placard-header {
+      border: 4px solid #000;
+      display: grid;
+      grid-template-columns: 34mm 1fr 34mm;
+      align-items: stretch;
+      min-height: 34mm;
+    }
+
+    .signal-box {
+      background: var(--red);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      font-weight: 900;
+      font-size: 18px;
+      line-height: 1.05;
+      padding: 4mm 3mm;
+      text-transform: uppercase;
+    }
+
+    .product-box {
+      display: grid;
+      align-content: center;
+      text-align: center;
+      padding: 3mm 4mm;
+      border-left: 4px solid #000;
+      border-right: 4px solid #000;
+    }
+
+    .product-box h2 {
+      margin: 0;
+      font-size: 26px;
+      line-height: 1.02;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .product-box p {
+      margin: 2mm 0 0;
+      font-size: 12px;
+      font-weight: 700;
+      color: #28313f;
+    }
+
+    .un-box {
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 3mm;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .un-box span:first-child {
+      font-size: 14px;
+      display: block;
+      margin-bottom: 3mm;
+    }
+
+    .un-box span:last-child { font-size: 30px; }
+
+    .warning-band {
+      display: grid;
+      grid-template-columns: 1fr 62mm;
+      gap: 4mm;
+      border: 4px solid var(--red);
+      background: #fff5f5;
+      padding: 4mm;
+    }
+
+    .rtl .warning-band { grid-template-columns: 62mm 1fr; }
+
+    .section-title {
+      margin: 0 0 3mm;
+      font-size: 18px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: var(--red-dark);
+      border-bottom: 2px solid currentColor;
+      padding-bottom: 1mm;
+    }
+
+    .hazards {
+      margin: 0;
+      padding-left: 7mm;
+      font-size: 16px;
+      line-height: 1.25;
+      font-weight: 900;
+    }
+
+    .rtl .hazards {
+      padding-left: 0;
+      padding-right: 7mm;
+    }
+
+    .hazards li { margin-bottom: 2mm; }
+
+    .pictograms {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 3mm;
+      align-content: center;
+      justify-items: center;
+    }
+
+    .pictograms img {
+      width: 25mm;
+      height: 25mm;
+      object-fit: contain;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 3.5mm;
+    }
+
+    .block {
+      border: 3px solid #000;
+      background: #fff;
+    }
+
+    .block h3 {
+      margin: 0;
+      color: #fff;
+      font-size: 15px;
+      line-height: 1.15;
+      text-align: center;
+      text-transform: uppercase;
+      font-weight: 900;
+      padding: 2mm;
+    }
+
+    .block.ppe h3 { background: var(--blue); }
+    .block.first-aid h3 { background: var(--green); }
+
+    .ppe-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 3mm;
+      padding: 3.5mm;
+      text-align: center;
+    }
+
+    .ppe-item {
+      display: grid;
+      justify-items: center;
+      align-content: start;
+      gap: 2mm;
+      min-height: 26mm;
+      font-size: 12px;
+      line-height: 1.15;
+      font-weight: 900;
+    }
+
+    .ppe-icon {
+      width: 15mm;
+      height: 15mm;
+      display: grid;
+      place-items: center;
+    }
+
+    .ppe-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .first-aid-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3mm;
+      padding: 3.5mm;
+      background: #f0fff6;
+    }
+
+    .aid-row {
+      display: grid;
+      grid-template-columns: 11mm 1fr;
+      gap: 2.5mm;
+      align-items: start;
+      font-size: 11.5px;
+      line-height: 1.2;
+    }
+
+    .rtl .aid-row { grid-template-columns: 1fr 11mm; }
+
+    .aid-icon {
+      width: 10mm;
+      height: 10mm;
+      border-radius: 50%;
+      background: var(--green);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+    }
+
+    .aid-title {
+      display: block;
+      color: #075c32;
+      font-weight: 900;
+      margin-bottom: 1mm;
+    }
+
+    .phone-panel {
+      border: 3px solid #000;
+      background: #fffbe8;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+
+    .phone-heading {
+      grid-column: 1 / -1;
+      background: var(--yellow);
+      border-bottom: 3px solid #000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8mm;
+      padding: 2mm 4mm;
+      font-weight: 900;
+      font-size: 15px;
+    }
+
+    .phone-number {
+      font-size: 22px;
+      color: var(--red);
+      white-space: nowrap;
+    }
+
+    .phone-card {
+      padding: 3mm 4mm;
+      font-size: 11px;
+      line-height: 1.3;
+      min-height: 22mm;
+    }
+
+    .phone-card + .phone-card { border-left: 3px solid #000; }
+    .rtl .phone-card + .phone-card { border-left: 0; border-right: 3px solid #000; }
+
+    .phone-card strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 1.5mm;
+      color: #173f75;
+    }
+
+    .footer {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 4mm;
+      border-top: 3px solid #000;
+      padding-top: 3mm;
+      font-size: 10.5px;
+      font-weight: 800;
+      color: #26313f;
+    }
+
+    .footer div:nth-child(2) { text-align: center; }
+    .footer div:nth-child(3) { text-align: right; }
+    .rtl .footer div:nth-child(1) { text-align: right; }
+    .rtl .footer div:nth-child(3) { text-align: left; }
+
+    @media (max-width: 1100px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .side-panel {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .placard {
+        transform: scale(.74);
+        transform-origin: top center;
+        margin-bottom: -76mm;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .preview-area { padding: 10px; }
+      .toolbar { align-items: stretch; flex-direction: column; }
+      .placard {
+        transform: scale(.46);
+        margin-bottom: -160mm;
+      }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .side-panel, .toolbar { display: none !important; }
+      .app-shell { display: block; }
+      .preview-area { padding: 0; overflow: visible; }
+      .pages { display: block; }
+      .placard {
+        width: 210mm;
+        min-height: 297mm;
+        height: 297mm;
+        margin: 0;
+        box-shadow: none;
+        border: 0;
+        page-break-after: always;
+        transform: none !important;
+      }
+      @page { size: A4; margin: 0; }
+      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+  </style>
 </head>
 <body>
-
-    <!-- Upload Screen -->
-    <div id="upload-screen" class="min-h-screen flex items-center justify-center bg-gray-100 p-6">
-        <div class="bg-white rounded-2xl shadow-xl max-w-xl w-full p-8 text-center">
-            <div class="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <i data-lucide="file-text" class="w-10 h-10"></i>
-            </div>
-            <h1 class="text-3xl font-bold text-gray-800 mb-2">AI Safety Placard Generator</h1>
-            <p class="text-gray-600 mb-8">Upload an SDS (Safety Data Sheet) in PDF format. Our AI will automatically extract the hazards and generate a 4-language A4 safety placard.</p>
-            
-            <div class="border-2 border-dashed border-gray-300 rounded-xl p-10 hover:bg-gray-50 transition relative group">
-                <input type="file" id="pdf-upload" accept="application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                <i data-lucide="upload-cloud" class="w-12 h-12 text-gray-400 mx-auto mb-4 group-hover:text-blue-500 transition"></i>
-                <p class="text-gray-600 font-semibold group-hover:text-blue-600 transition">Click to select or drag and drop a PDF</p>
-                <p class="text-sm text-gray-400 mt-2" id="file-name">No file selected</p>
-            </div>
-
-            <!-- Pictogram Selection Mode -->
-            <div class="mt-6 mb-2 border border-gray-200 rounded-xl p-4 bg-gray-50 text-left">
-                <label class="block text-gray-800 font-bold mb-3 text-center">GHS Pictograms Source:</label>
-                <div class="flex gap-6 justify-center mb-4">
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="picto-mode" value="auto" checked class="form-radio text-blue-600 w-5 h-5">
-                        <span class="font-semibold text-gray-700">Auto-detect from SDS</span>
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="picto-mode" value="manual" class="form-radio text-blue-600 w-5 h-5">
-                        <span class="font-semibold text-gray-700">Manual Selection</span>
-                    </label>
-                </div>
-                
-                <!-- Manual Picker UI -->
-                <div id="manual-pictograms-ui" class="hidden grid grid-cols-3 sm:grid-cols-5 gap-3 mt-4 pt-4 border-t border-gray-200">
-                    <!-- Injected via JS -->
-                </div>
-            </div>
-
-            <button id="generate-btn" disabled class="mt-8 w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-xl transition shadow-lg flex items-center justify-center gap-2">
-                <span>Generate Placards</span>
-                <i data-lucide="wand-2"></i>
-            </button>
-
-            <!-- Loading State -->
-            <div id="loading-state" class="hidden mt-6 flex-col items-center">
-                <div class="loader border-4 border-gray-200 rounded-full w-12 h-12 mb-4"></div>
-                <p class="text-blue-600 font-semibold animate-pulse" id="loading-text">Analyzing SDS PDF with Gemini AI...</p>
-            </div>
-
-            <!-- Error State -->
-            <div id="error-state" class="hidden mt-6 bg-red-50 text-red-700 p-4 rounded-lg border border-red-200 text-sm text-left">
-                <p class="font-bold flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4"></i> Error</p>
-                <p id="error-message" class="mt-1 font-mono break-words"></p>
-            </div>
+  <main class="app-shell">
+    <aside class="side-panel">
+      <div class="brand">
+        <div class="brand-mark"><span>!</span></div>
+        <div>
+          <h1>SDS AI Safety Placard Generator</h1>
+          <p class="subtitle">Upload an SDS PDF or image, extract the chemical safety data with AI, then print four A4 placards.</p>
         </div>
-    </div>
+      </div>
 
-    <!-- Control Bar (Visible when placards are generated) -->
-    <div id="control-bar" class="hidden fixed top-0 left-0 w-full bg-white border-b border-gray-200 p-4 flex justify-between items-center z-50 shadow-md">
-        <button onclick="location.reload()" class="text-gray-600 hover:text-gray-900 font-semibold flex items-center gap-2 transition">
-            <i data-lucide="arrow-left"></i> Start Over
+      <div class="field">
+        <label for="api-key">Gemini API key</label>
+        <input id="api-key" type="password" autocomplete="off" placeholder="Paste key for this browser session">
+        <div class="hint">The key stays in this page session. A static web app cannot hide a hardcoded API key.</div>
+      </div>
+
+      <label class="upload-zone" for="sds-file" id="drop-zone">
+        <input id="sds-file" type="file" accept="application/pdf,image/*">
+        <div>
+          <div class="upload-icon">⬆</div>
+          <strong>Upload SDS PDF or image</strong>
+          <div class="hint" id="file-name">No file selected</div>
+        </div>
+      </label>
+
+      <div class="field">
+        <label for="model">AI model</label>
+        <select id="model">
+          <option value="gemini-flash-latest">gemini-flash-latest</option>
+          <option value="gemini-3.5-flash">gemini-3.5-flash</option>
+          <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
+          <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
+          <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+          <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+          <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+        </select>
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn-primary" id="extract-btn" disabled>⚡ Extract</button>
+        <button class="btn btn-secondary" id="sample-btn">Load Sample</button>
+      </div>
+
+      <div class="status busy" id="busy-status">Reading SDS and building placard data...</div>
+      <div class="status error" id="error-status"></div>
+
+      <div class="field">
+        <label>GHS pictograms</label>
+        <div class="pictogram-grid" id="pictogram-grid"></div>
+      </div>
+
+      <div class="tabs" id="language-tabs"></div>
+      <div id="editor"></div>
+    </aside>
+
+    <section class="preview-area">
+      <div class="toolbar">
+        <div class="toolbar-title">Print-ready A4 placards: English, Russian, Arabic, Hebrew</div>
+        <div class="action-row" style="margin:0; grid-template-columns:auto auto;">
+          <button class="btn btn-secondary" id="refresh-btn">↻ Refresh</button>
+          <button class="btn btn-danger" id="print-btn">⎙ Print / PDF</button>
+        </div>
+      </div>
+      <div class="pages" id="pages">
+        <div class="empty-state">
+          <div>
+            <strong>Placards will appear here</strong>
+            Upload an SDS and extract, or load the sample to preview the format.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const GHS_IMAGES = {
+      GHS01: "./images/Explosive.jpg",
+      GHS02: "./images/Flammable.jpg",
+      GHS03: "./images/Oxidizer.jpg",
+      GHS04: "./images/Gas.jpg",
+      GHS05: "./images/Corrosive.jpg",
+      GHS06: "./images/Toxic.jpg",
+      GHS07: "./images/Irritant.jpg",
+      GHS08: "./images/Health.jpg",
+      GHS09: "./images/Environment.jpg"
+    };
+
+    const GHS_LABELS = {
+      GHS01: "Explosive",
+      GHS02: "Flammable",
+      GHS03: "Oxidizer",
+      GHS04: "Gas under pressure",
+      GHS05: "Corrosive",
+      GHS06: "Acute toxicity",
+      GHS07: "Irritant",
+      GHS08: "Health hazard",
+      GHS09: "Environment"
+    };
+
+    const UI = {
+      english: {
+        tab: "English",
+        signal: "DANGER",
+        un: "UN",
+        hazards: "Severe hazards",
+        ppe: "Mandatory personal protective equipment (PPE)",
+        firstAid: "First aid - in emergency",
+        eyes: "Eyes",
+        skin: "Skin",
+        ingestion: "Ingestion",
+        inhalation: "Inhalation",
+        poisonTitle: "National Poison Information Center (Rambam)",
+        poisonWhen: "Who to call? 04-7771900",
+        poisonText: "For suspected poisoning or chemical exposure. Professional advice 24/7.",
+        madaWhen: "When to call 101 (MADA)?",
+        madaText: "For immediate emergency: breathing difficulty, loss of consciousness, collapse, or severe injury.",
+        supplier: "Supplier",
+        advice: "In any exposure case, seek medical advice.",
+        emergency: "Emergency: 101"
+      },
+      russian: {
+        tab: "Русский",
+        signal: "ОПАСНО",
+        un: "UN",
+        hazards: "Серьезные опасности",
+        ppe: "Обязательные средства индивидуальной защиты (СИЗ)",
+        firstAid: "Первая помощь - при аварии",
+        eyes: "Глаза",
+        skin: "Кожа",
+        ingestion: "Проглатывание",
+        inhalation: "Вдыхание",
+        poisonTitle: "Национальный информационный центр по отравлениям (Рамбам)",
+        poisonWhen: "Куда звонить? 04-7771900",
+        poisonText: "При подозрении на отравление или воздействие химикатов. Профессиональная консультация 24/7.",
+        madaWhen: "Когда звонить 101 (МАДА)?",
+        madaText: "При немедленной опасности: затрудненное дыхание, потеря сознания, коллапс или тяжелая травма.",
+        supplier: "Поставщик",
+        advice: "При любом воздействии обратитесь за медицинской помощью.",
+        emergency: "Экстренно: 101"
+      },
+      arabic: {
+        tab: "العربية",
+        signal: "خطر",
+        un: "UN",
+        hazards: "مخاطر شديدة",
+        ppe: "معدات الوقاية الشخصية الإلزامية",
+        firstAid: "الإسعافات الأولية - في حالة الطوارئ",
+        eyes: "العينان",
+        skin: "الجلد",
+        ingestion: "الابتلاع",
+        inhalation: "الاستنشاق",
+        poisonTitle: "المركز الوطني لمعلومات السموم (رمبام)",
+        poisonWhen: "بمن تتصل؟ 04-7771900",
+        poisonText: "عند الاشتباه بالتسمم أو التعرض للمواد الكيميائية. استشارة مهنية على مدار الساعة.",
+        madaWhen: "متى تتصل بـ 101 (نجمة داود الحمراء)؟",
+        madaText: "في حالة طوارئ فورية: صعوبة تنفس، فقدان الوعي، انهيار، أو إصابة شديدة.",
+        supplier: "المورد",
+        advice: "في أي حالة تعرض، اطلب استشارة طبية.",
+        emergency: "طوارئ: 101"
+      },
+      hebrew: {
+        tab: "עברית",
+        signal: "סכנה",
+        un: "UN",
+        hazards: "סיכונים חמורים",
+        ppe: "ציוד מגן אישי חובה",
+        firstAid: "עזרה ראשונה - במקרה חירום",
+        eyes: "עיניים",
+        skin: "עור",
+        ingestion: "בליעה",
+        inhalation: "שאיפה",
+        poisonTitle: "המרכז הארצי למידע בהרעלות (רמב\"ם)",
+        poisonWhen: "למי להתקשר? 04-7771900",
+        poisonText: "במקרה של חשד להרעלה או חשיפה לחומרים כימיים. ייעוץ מקצועי 24/7.",
+        madaWhen: "מתי להתקשר ל-101 (מד\"א)?",
+        madaText: "במקרה חירום מיידי: קשיי נשימה, אובדן הכרה, התמוטטות או פגיעה חמורה.",
+        supplier: "ספק",
+        advice: "בכל מקרה של חשיפה יש לפנות לייעוץ רפואי.",
+        emergency: "חירום: 101"
+      }
+    };
+
+    const LANGUAGES = ["english", "russian", "arabic", "hebrew"];
+    const RTL = new Set(["arabic", "hebrew"]);
+
+    const PPE_ICONS = {
+      M003: {
+        label: "M003 - Wear ear protection",
+        src: "./images/iso7010/ISO_7010_M003.svg.png",
+        fallback: "./images/ppe/hearing-protection.png"
+      },
+      M004: {
+        label: "M004 - Wear eye protection",
+        src: "./images/iso7010/ISO_7010_M004.svg.png",
+        fallback: "./images/ppe/safety-glasses.png"
+      },
+      M008: {
+        label: "M008 - Wear safety footwear",
+        src: "./images/iso7010/ISO_7010_M008.svg.png",
+        fallback: "./images/ppe/safety-boots.png"
+      },
+      M009: {
+        label: "M009 - Wear protective gloves",
+        src: "./images/iso7010/ISO_7010_M009.svg.png",
+        fallback: "./images/ppe/protective-gloves.png"
+      },
+      M010: {
+        label: "M010 - Wear protective clothing",
+        src: "./images/iso7010/ISO_7010_M010.svg.png",
+        fallback: "./images/ppe/high-visibility-vest.png"
+      },
+      M013: {
+        label: "M013 - Wear a face shield",
+        src: "./images/iso7010/ISO_7010_M013.svg.png",
+        fallback: "./images/ppe/face-shield.png"
+      },
+      M014: {
+        label: "M014 - Wear head protection",
+        src: "./images/iso7010/ISO_7010_M014.svg.png",
+        fallback: "./images/ppe/hard-hat.png"
+      },
+      M015: {
+        label: "M015 - Wear high-visibility clothing",
+        src: "./images/iso7010/ISO_7010_M015.svg.png",
+        fallback: "./images/ppe/high-visibility-vest.png"
+      },
+      M016: {
+        label: "M016 - Wear a mask",
+        src: "./images/iso7010/ISO_7010_M016.svg.png",
+        fallback: "./images/ppe/dust-mask.png"
+      },
+      M017: {
+        label: "M017 - Wear respiratory protection",
+        src: "./images/iso7010/ISO_7010_M017.svg.png",
+        fallback: "./images/ppe/respirator.png"
+      },
+      M026: {
+        label: "M026 - Use protective apron",
+        src: "./images/iso7010/ISO_7010_M026.svg.png",
+        fallback: codeBadgeDataUri("M026", "Protective apron")
+      },
+      M059: {
+        label: "M059 - Wear laboratory coat",
+        src: "./images/iso7010/ISO_7010_M059.svg.png",
+        fallback: codeBadgeDataUri("M059", "Laboratory coat")
+      }
+    };
+
+    const sampleData = {
+      unNumber: "1789",
+      pictograms: ["GHS05", "GHS07"],
+      english: {
+        productName: "Hydrochloric Acid 32%",
+        description: "Corrosive inorganic acid solution.",
+        hazards: [
+          "Causes severe skin burns and eye damage.",
+          "May cause respiratory irritation.",
+          "Corrosive to metals."
+        ],
+        ppe: [
+          { icon: "M004", text: "Chemical goggles" },
+          { icon: "M009", text: "Acid resistant gloves" },
+          { icon: "M013", text: "Face shield" },
+          { icon: "M010", text: "Protective clothing" }
+        ],
+        firstAid: {
+          eyes: "Rinse cautiously with water for several minutes. Remove contact lenses if present and easy to do. Continue rinsing and get urgent medical help.",
+          skin: "Remove contaminated clothing immediately. Rinse skin with water or shower for at least 15 minutes.",
+          ingestion: "Rinse mouth. Do not induce vomiting. Call poison center or doctor immediately.",
+          inhalation: "Move person to fresh air and keep comfortable for breathing. Get medical attention."
+        },
+        supplierName: "Enter supplier name"
+      },
+      russian: {
+        productName: "Соляная кислота 32%",
+        description: "Коррозионный раствор неорганической кислоты.",
+        hazards: [
+          "Вызывает тяжелые ожоги кожи и повреждение глаз.",
+          "Может вызывать раздражение дыхательных путей.",
+          "Коррозионно для металлов."
+        ],
+        ppe: [
+          { icon: "M004", text: "Химические очки" },
+          { icon: "M009", text: "Кислотостойкие перчатки" },
+          { icon: "M013", text: "Защитный щиток" },
+          { icon: "M010", text: "Защитная одежда" }
+        ],
+        firstAid: {
+          eyes: "Осторожно промывать водой несколько минут. Снять контактные линзы, если это легко сделать. Продолжать промывание и срочно обратиться за медицинской помощью.",
+          skin: "Немедленно снять загрязненную одежду. Промывать кожу водой или под душем не менее 15 минут.",
+          ingestion: "Прополоскать рот. Не вызывать рвоту. Немедленно позвонить в токсикологический центр или врачу.",
+          inhalation: "Вывести пострадавшего на свежий воздух и обеспечить удобное положение для дыхания. Обратиться к врачу."
+        },
+        supplierName: "Укажите поставщика"
+      },
+      arabic: {
+        productName: "حمض الهيدروكلوريك 32%",
+        description: "محلول حمض غير عضوي آكل.",
+        hazards: [
+          "يسبب حروقا جلدية شديدة وتلفا خطيرا للعين.",
+          "قد يسبب تهيجا في الجهاز التنفسي.",
+          "آكل للمعادن."
+        ],
+        ppe: [
+          { icon: "M004", text: "نظارات كيميائية" },
+          { icon: "M009", text: "قفازات مقاومة للأحماض" },
+          { icon: "M013", text: "واقي وجه" },
+          { icon: "M010", text: "ملابس واقية" }
+        ],
+        firstAid: {
+          eyes: "اشطف بحذر بالماء لعدة دقائق. أزل العدسات اللاصقة إن وجدت وكان ذلك سهلا. استمر بالشطف واطلب مساعدة طبية عاجلة.",
+          skin: "انزع الملابس الملوثة فورا. اغسل الجلد بالماء أو تحت الدش لمدة 15 دقيقة على الأقل.",
+          ingestion: "اشطف الفم. لا تسبب القيء. اتصل بمركز السموم أو الطبيب فورا.",
+          inhalation: "انقل الشخص إلى الهواء النقي واجعله في وضع مريح للتنفس. اطلب العناية الطبية."
+        },
+        supplierName: "أدخل اسم المورد"
+      },
+      hebrew: {
+        productName: "חומצה הידרוכלורית 32%",
+        description: "תמיסת חומצה אנאורגנית קורוזיבית.",
+        hazards: [
+          "גורם לכוויות עור חמורות ולנזק חמור לעיניים.",
+          "עלול לגרום לגירוי בדרכי הנשימה.",
+          "קורוזיבי למתכות."
+        ],
+        ppe: [
+          { icon: "M004", text: "משקפי מגן כימיים" },
+          { icon: "M009", text: "כפפות עמידות לחומצה" },
+          { icon: "M013", text: "מגן פנים" },
+          { icon: "M010", text: "ביגוד מגן" }
+        ],
+        firstAid: {
+          eyes: "לשטוף בזהירות במים במשך מספר דקות. להסיר עדשות מגע אם קיימות וקל להסירן. להמשיך בשטיפה ולקבל טיפול רפואי דחוף.",
+          skin: "להסיר מיד בגדים מזוהמים. לשטוף את העור במים או במקלחת לפחות 15 דקות.",
+          ingestion: "לשטוף את הפה. אין לגרום להקאה. להתקשר מיד למרכז הרעלות או לרופא.",
+          inhalation: "להעביר לאוויר צח ולשמור במנוחה בתנוחה נוחה לנשימה. לפנות לטיפול רפואי."
+        },
+        supplierName: "הזן שם ספק"
+      }
+    };
+
+    let placardData = structuredClone(sampleData);
+    let currentLanguage = "english";
+    let selectedFile = null;
+    let selectedBase64 = null;
+    let selectedMime = null;
+    const invalidIsoSources = new Set();
+
+    const fileInput = document.getElementById("sds-file");
+    const fileName = document.getElementById("file-name");
+    const apiKey = document.getElementById("api-key");
+    const model = document.getElementById("model");
+    const extractBtn = document.getElementById("extract-btn");
+    const sampleBtn = document.getElementById("sample-btn");
+    const refreshBtn = document.getElementById("refresh-btn");
+    const printBtn = document.getElementById("print-btn");
+    const busyStatus = document.getElementById("busy-status");
+    const errorStatus = document.getElementById("error-status");
+    const pictogramGrid = document.getElementById("pictogram-grid");
+    const languageTabs = document.getElementById("language-tabs");
+    const editor = document.getElementById("editor");
+    const pages = document.getElementById("pages");
+    const dropZone = document.getElementById("drop-zone");
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function normalizeLines(value, fallback = []) {
+      if (Array.isArray(value)) return value.map(String).filter(Boolean);
+      return String(value || "").split("\n").map(line => line.trim()).filter(Boolean).length
+        ? String(value).split("\n").map(line => line.trim()).filter(Boolean)
+        : fallback;
+    }
+
+    function toTextArea(lines) {
+      return normalizeLines(lines).join("\n");
+    }
+
+    function setStatus(type, message) {
+      busyStatus.classList.remove("show");
+      errorStatus.classList.remove("show");
+      if (!message) return;
+      if (type === "busy") {
+        busyStatus.textContent = message;
+        busyStatus.classList.add("show");
+      } else {
+        errorStatus.textContent = message;
+        errorStatus.classList.add("show");
+      }
+    }
+
+    function renderPictogramPicker() {
+      pictogramGrid.innerHTML = Object.keys(GHS_IMAGES).map(code => {
+        const selected = placardData.pictograms.includes(code) ? "selected" : "";
+        return `
+          <button type="button" class="picto-choice ${selected}" data-code="${code}" title="${GHS_LABELS[code]}">
+            <img src="${GHS_IMAGES[code]}" alt="${GHS_LABELS[code]}">
+            <span>${GHS_LABELS[code]}</span>
+          </button>
+        `;
+      }).join("");
+
+      pictogramGrid.querySelectorAll(".picto-choice").forEach(button => {
+        button.addEventListener("click", () => {
+          const code = button.dataset.code;
+          const existing = new Set(placardData.pictograms);
+          if (existing.has(code)) existing.delete(code);
+          else existing.add(code);
+          placardData.pictograms = Array.from(existing);
+          renderAll();
+        });
+      });
+    }
+
+    function renderTabs() {
+      languageTabs.innerHTML = LANGUAGES.map(lang => `
+        <button type="button" class="tab ${lang === currentLanguage ? "active" : ""}" data-lang="${lang}">
+          ${UI[lang].tab}
         </button>
-        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2 transition shadow">
-            <i data-lucide="printer"></i> Print / Save as PDF
-        </button>
-    </div>
+      `).join("");
 
-    <!-- Placard Container (Will hold the 4 pages) -->
-    <div id="placard-container" class="hidden pt-20 pb-10">
-        <!-- Rendered pages injected here -->
-    </div>
+      languageTabs.querySelectorAll(".tab").forEach(tab => {
+        tab.addEventListener("click", () => {
+          currentLanguage = tab.dataset.lang;
+          renderAll();
+        });
+      });
+    }
 
-    <script type="module">
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-analytics.js";
+    function renderEditor() {
+      const lang = currentLanguage;
+      const data = placardData[lang];
+      const dir = RTL.has(lang) ? "rtl" : "ltr";
+      editor.innerHTML = `
+        <div class="edit-panel active" dir="${dir}">
+          <div class="field">
+            <label>Product name</label>
+            <input data-edit="${lang}.productName" value="${escapeHtml(data.productName)}">
+          </div>
+          <div class="field">
+            <label>Description</label>
+            <textarea data-edit="${lang}.description">${escapeHtml(data.description)}</textarea>
+          </div>
+          <div class="field">
+            <label>Hazards, one per line</label>
+            <textarea data-edit="${lang}.hazards">${escapeHtml(toTextArea(data.hazards))}</textarea>
+          </div>
+          <div class="field">
+            <label>PPE, one per line</label>
+            <textarea data-edit="${lang}.ppe">${escapeHtml(data.ppe.map(item => item.text).join("\n"))}</textarea>
+          </div>
+          <div class="field">
+            <label>Eyes first aid</label>
+            <textarea data-edit="${lang}.firstAid.eyes">${escapeHtml(data.firstAid.eyes)}</textarea>
+          </div>
+          <div class="field">
+            <label>Skin first aid</label>
+            <textarea data-edit="${lang}.firstAid.skin">${escapeHtml(data.firstAid.skin)}</textarea>
+          </div>
+          <div class="field">
+            <label>Ingestion first aid</label>
+            <textarea data-edit="${lang}.firstAid.ingestion">${escapeHtml(data.firstAid.ingestion)}</textarea>
+          </div>
+          <div class="field">
+            <label>Inhalation first aid</label>
+            <textarea data-edit="${lang}.firstAid.inhalation">${escapeHtml(data.firstAid.inhalation)}</textarea>
+          </div>
+          <div class="field">
+            <label>Supplier</label>
+            <input data-edit="${lang}.supplierName" value="${escapeHtml(data.supplierName)}">
+          </div>
+          <div class="field">
+            <label>UN number</label>
+            <input data-edit="unNumber" value="${escapeHtml(placardData.unNumber)}">
+          </div>
+        </div>
+      `;
 
-        // Your web app's Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyD6Xp-7CVOjuBUErScl9KoEzpoaaKLp7Tw",
-            authDomain: "sds-ai-placard-generator.firebaseapp.com",
-            projectId: "sds-ai-placard-generator",
-            storageBucket: "sds-ai-placard-generator.firebasestorage.app",
-            messagingSenderId: "664919671895",
-            appId: "1:664919671895:web:57af83e475d2f09bdb8f12",
-            measurementId: "G-MTSMGCMPZ5"
+      editor.querySelectorAll("[data-edit]").forEach(control => {
+        control.addEventListener("input", () => {
+          updateData(control.dataset.edit, control.value);
+          renderPages();
+        });
+      });
+    }
+
+    function updateData(path, value) {
+      if (path === "unNumber") {
+        placardData.unNumber = value.trim() || "N/A";
+        return;
+      }
+
+      const [lang, key, subkey] = path.split(".");
+      if (key === "hazards") {
+        placardData[lang].hazards = normalizeLines(value);
+        return;
+      }
+      if (key === "ppe") {
+        const icons = ["M004", "M009", "M013", "M010"];
+        placardData[lang].ppe = normalizeLines(value).slice(0, 6).map((text, index) => ({
+          icon: normalizePpeIcon(placardData[lang].ppe[index]?.icon || icons[index] || "M004", text),
+          text
+        }));
+        return;
+      }
+      if (key === "firstAid") {
+        placardData[lang].firstAid[subkey] = value;
+        return;
+      }
+      placardData[lang][key] = value;
+    }
+
+    function aidRows(lang, data) {
+      const ui = UI[lang];
+      const rows = [
+        ["◉", ui.eyes, data.firstAid.eyes],
+        ["≈", ui.skin, data.firstAid.skin],
+        ["!", ui.ingestion, data.firstAid.ingestion],
+        ["≋", ui.inhalation, data.firstAid.inhalation]
+      ];
+
+      return rows.map(([icon, title, text]) => `
+        <div class="aid-row">
+          ${RTL.has(lang) ? "" : `<div class="aid-icon">${icon}</div>`}
+          <div><span class="aid-title">${escapeHtml(title)}</span>${escapeHtml(text)}</div>
+          ${RTL.has(lang) ? `<div class="aid-icon">${icon}</div>` : ""}
+        </div>
+      `).join("");
+    }
+
+    function ppeItems(data) {
+      return data.ppe.slice(0, 4).map(item => `
+        <div class="ppe-item">
+          <div class="ppe-icon">
+            <img src="${ppeIconSrc(item.icon, item.text)}" alt="${escapeHtml(ppeIconLabel(item.icon, item.text))}" onerror="this.onerror=null;this.src='${ppeIconFallback(item.icon, item.text)}';">
+          </div>
+          <div>${escapeHtml(item.text)}</div>
+        </div>
+      `).join("");
+    }
+
+    function normalizePpeIcon(icon, text = "") {
+      const value = `${icon || ""} ${text || ""}`.toLowerCase();
+      if (/\b(ear protection|ear defenders|hearing|noise)\b/.test(value)) return "M003";
+      if (/\b(footwear|safety boots?|boots?|shoes?)\b/.test(value)) return "M008";
+      if (/\b(gloves?|hand protection)\b/.test(value)) return "M009";
+      if (/\b(face shield|face protection)\b/.test(value)) return "M013";
+      if (/\b(helmet|hard hat|head protection)\b/.test(value)) return "M014";
+      if (/\b(high-vis|hi-vis|high visibility|reflective vest|visibility clothing)\b/.test(value)) return "M015";
+      if (/\b(lab coat|laboratory coat)\b/.test(value)) return "M059";
+      if (/\b(apron|protective apron)\b/.test(value)) return "M026";
+      if (/\b(respirator|respiratory protection|breathing protection|vapours?|vapors?|organic vapours?|organic vapors?)\b/.test(value)) return "M017";
+      if (/\b(dust mask|mask)\b/.test(value)) return "M016";
+      if (/\b(goggles?|glasses?|eye protection|eyes?)\b/.test(value)) return "M004";
+      if (/\b(protective clothing|chemical suit|coveralls?|clothing)\b/.test(value)) return "M010";
+      if (PPE_ICONS[icon]) return icon;
+      return "M004";
+    }
+
+    function ppeIconSrc(icon, text) {
+      const resolved = PPE_ICONS[normalizePpeIcon(icon, text)];
+      return invalidIsoSources.has(resolved.src) ? resolved.fallback : resolved.src;
+    }
+
+    function ppeIconFallback(icon, text) {
+      return PPE_ICONS[normalizePpeIcon(icon, text)].fallback;
+    }
+
+    function ppeIconLabel(icon, text) {
+      return PPE_ICONS[normalizePpeIcon(icon, text)].label;
+    }
+
+    function codeBadgeDataUri(code, label) {
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 188 188">
+          <circle cx="94" cy="94" r="88" fill="#0b70b7"/>
+          <text x="94" y="84" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="34" font-weight="700">${code}</text>
+          <text x="94" y="116" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="700">${label}</text>
+        </svg>
+      `;
+      return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+    }
+
+    async function validateIsoSymbols() {
+      const entries = Object.values(PPE_ICONS);
+      await Promise.all(entries.map(async item => {
+        try {
+          const response = await fetch(item.src, { cache: "no-store" });
+          if (!response.ok) {
+            invalidIsoSources.add(item.src);
+            return;
+          }
+
+          const contentType = (response.headers.get("content-type") || "").toLowerCase();
+          if (contentType.includes("image/png") || contentType.includes("image/svg")) return;
+
+          const buffer = await response.arrayBuffer();
+          const bytes = new Uint8Array(buffer.slice(0, 8));
+          const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+          if (isPng) return;
+
+          const text = new TextDecoder().decode(buffer.slice(0, 300)).toLowerCase();
+          if (!text.includes("<svg")) invalidIsoSources.add(item.src);
+        } catch {
+          invalidIsoSources.add(item.src);
+        }
+      }));
+    }
+
+    function renderPlacard(lang) {
+      const data = placardData[lang];
+      const ui = UI[lang];
+      const rtl = RTL.has(lang);
+      const pictograms = placardData.pictograms.length ? placardData.pictograms : ["GHS07"];
+      const hazards = normalizeLines(data.hazards, ["Review SDS before use."]).slice(0, 5);
+      const langClass = rtl ? `rtl ${lang}` : lang;
+
+      return `
+        <article class="placard ${langClass}" dir="${rtl ? "rtl" : "ltr"}">
+          <header class="placard-header">
+            <div class="signal-box">${escapeHtml(ui.signal)}<br>!</div>
+            <div class="product-box">
+              <h2>${escapeHtml(data.productName || "Chemical product")}</h2>
+              <p>${escapeHtml(data.description || "Safety Data Sheet summary")}</p>
+            </div>
+            <div class="un-box">
+              <span>${escapeHtml(ui.un)}</span>
+              <span>${escapeHtml(placardData.unNumber || "N/A")}</span>
+            </div>
+          </header>
+
+          <section class="warning-band">
+            ${rtl ? `<div class="pictograms">${renderPictograms(pictograms)}</div>` : ""}
+            <div>
+              <h3 class="section-title">${escapeHtml(ui.hazards)}</h3>
+              <ul class="hazards">${hazards.map(hazard => `<li>${escapeHtml(hazard)}</li>`).join("")}</ul>
+            </div>
+            ${rtl ? "" : `<div class="pictograms">${renderPictograms(pictograms)}</div>`}
+          </section>
+
+          <section class="content-grid">
+            <div class="block ppe">
+              <h3>${escapeHtml(ui.ppe)}</h3>
+              <div class="ppe-grid">${ppeItems(data)}</div>
+            </div>
+
+            <div class="block first-aid">
+              <h3>${escapeHtml(ui.firstAid)}</h3>
+              <div class="first-aid-grid">${aidRows(lang, data)}</div>
+            </div>
+          </section>
+
+          <section class="phone-panel">
+            <div class="phone-heading">
+              <span>${escapeHtml(ui.poisonTitle)}</span>
+              <span class="phone-number">04-7771900</span>
+            </div>
+            <div class="phone-card">
+              <strong>${escapeHtml(ui.poisonWhen)}</strong>
+              ${escapeHtml(ui.poisonText)}
+            </div>
+            <div class="phone-card">
+              <strong>${escapeHtml(ui.madaWhen)}</strong>
+              ${escapeHtml(ui.madaText)}
+            </div>
+          </section>
+
+          <footer class="footer">
+            <div>${escapeHtml(ui.supplier)}: ${escapeHtml(data.supplierName || "N/A")}</div>
+            <div>${escapeHtml(ui.advice)}</div>
+            <div>${escapeHtml(ui.emergency)}</div>
+          </footer>
+        </article>
+      `;
+    }
+
+    function renderPictograms(codes) {
+      return codes.slice(0, 6).map(code => `
+        <img src="${GHS_IMAGES[code] || GHS_IMAGES.GHS07}" alt="${GHS_LABELS[code] || code}">
+      `).join("");
+    }
+
+    function renderPages() {
+      pages.innerHTML = LANGUAGES.map(renderPlacard).join("");
+    }
+
+    function renderAll() {
+      renderPictogramPicker();
+      renderTabs();
+      renderEditor();
+      renderPages();
+    }
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("Could not read the selected file."));
+        reader.onload = () => resolve(String(reader.result).split(",")[1]);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function validateExtractedData(raw) {
+      const next = structuredClone(sampleData);
+      next.unNumber = String(raw.unNumber || "N/A");
+      next.pictograms = Array.isArray(raw.pictograms)
+        ? raw.pictograms.filter(code => GHS_IMAGES[code]).slice(0, 6)
+        : [];
+
+      const englishPpe = Array.isArray(raw.english?.ppe) ? raw.english.ppe : [];
+      const canonicalPpeIcons = englishPpe.slice(0, 4).map((item, index) => (
+        normalizePpeIcon(item.icon || sampleData.english.ppe[index]?.icon, item.text || item)
+      ));
+
+      LANGUAGES.forEach(lang => {
+        const source = raw[lang] || {};
+        next[lang] = {
+          productName: String(source.productName || next[lang].productName),
+          description: String(source.description || next[lang].description),
+          hazards: normalizeLines(source.hazards, next[lang].hazards).slice(0, 5),
+          ppe: Array.isArray(source.ppe) && source.ppe.length
+            ? source.ppe.slice(0, 4).map((item, index) => ({
+              icon: canonicalPpeIcons[index] || normalizePpeIcon(item.icon, item.text || item),
+              text: String(item.text || item || next[lang].ppe[index]?.text || "Protective equipment")
+            }))
+            : next[lang].ppe,
+          firstAid: {
+            eyes: String(source.firstAid?.eyes || next[lang].firstAid.eyes),
+            skin: String(source.firstAid?.skin || next[lang].firstAid.skin),
+            ingestion: String(source.firstAid?.ingestion || next[lang].firstAid.ingestion),
+            inhalation: String(source.firstAid?.inhalation || next[lang].firstAid.inhalation)
+          },
+          supplierName: String(source.supplierName || next[lang].supplierName)
         };
+      });
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
+      return next;
+    }
 
-        // --- Application Logic ---
-        
-        // Initialize Lucide icons
-        window.lucide.createIcons();
+    async function extractWithGemini() {
+      if (!selectedBase64 || !selectedMime) throw new Error("Select an SDS PDF or image first.");
+      const key = apiKey.value.trim();
+      if (!key) throw new Error("Paste a Gemini API key before extraction.");
 
-        const fileInput = document.getElementById('pdf-upload');
-        const fileNameDisplay = document.getElementById('file-name');
-        const generateBtn = document.getElementById('generate-btn');
-        const uploadScreen = document.getElementById('upload-screen');
-        const controlBar = document.getElementById('control-bar');
-        const placardContainer = document.getElementById('placard-container');
-        const loadingState = document.getElementById('loading-state');
-        const loadingText = document.getElementById('loading-text');
-        const errorState = document.getElementById('error-state');
-        const errorMessage = document.getElementById('error-message');
+      const schema = {
+        type: "OBJECT",
+        properties: {
+          unNumber: { type: "STRING" },
+          pictograms: {
+            type: "ARRAY",
+            items: { type: "STRING", enum: Object.keys(GHS_IMAGES) }
+          },
+          english: languageSchema(),
+          russian: languageSchema(),
+          arabic: languageSchema(),
+          hebrew: languageSchema()
+        },
+        required: ["unNumber", "pictograms", "english", "russian", "arabic", "hebrew"]
+      };
 
-        let selectedFileBase64 = null;
+      const prompt = [
+        "You are a hazardous materials safety expert creating a workplace safety placard from an SDS.",
+        "Extract only SDS-supported facts. Translate the result into English, Russian, Arabic, and Hebrew.",
+        "Use short direct worker-facing wording. Product names may be translated when natural.",
+        "Choose up to six GHS pictograms from GHS01, GHS02, GHS03, GHS04, GHS05, GHS06, GHS07, GHS08, GHS09.",
+        "For hazards provide 3 to 5 severe warnings. For PPE provide exactly 4 mandatory items.",
+        `For every PPE item choose the best ISO 7010 mandatory sign code from: ${Object.keys(PPE_ICONS).join(", ")}.`,
+        "Use only these meanings: M003 ear protection, M004 eye protection, M008 safety footwear, M009 protective gloves, M010 protective clothing, M013 face shield, M014 head protection, M015 high visibility clothing, M016 mask, M017 respiratory protection, M026 protective apron, M059 laboratory coat.",
+        "If SDS text says respirator, respiratory protection, vapour, vapor, or breathing protection choose M017. If it says mask or dust mask choose M016. If it says apron choose M026. If it says lab coat choose M059. If it says gloves choose M009.",
+        "For first aid include eyes, skin, ingestion, and inhalation. If supplier is missing, write N/A.",
+        "Return valid JSON matching the schema."
+      ].join(" ");
 
-        // Image Dictionary for GHS Pictograms (Referencing the 'images' folder in your backend/repo)
-        const GHS_IMAGES = {
-            "GHS01": "./images/Explosive.jpg",
-            "GHS02": "./images/Flammable.jpg",
-            "GHS03": "./images/Oxidizer.jpg",
-            "GHS04": "./images/Gas.jpg",
-            "GHS05": "./images/Corrosive.jpg",
-            "GHS06": "./images/Toxic.jpg",
-            "GHS07": "./images/Irritant.jpg",
-            "GHS08": "./images/Health.jpg",
-            "GHS09": "./images/Environment.jpg"
-        };
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model.value)}:generateContent?key=${encodeURIComponent(key)}`;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            role: "user",
+            parts: [
+              { text: prompt },
+              { inlineData: { mimeType: selectedMime, data: selectedBase64 } }
+            ]
+          }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: schema,
+            temperature: 0.2
+          }
+        })
+      });
 
-        // Static translations for the UI elements
-        const UI_TRANSLATIONS = {
-            english: {
-                danger: "DANGER ! DANGER",
-                warningsTitle: "SEVERE HAZARDS",
-                ppeTitle: "MANDATORY PERSONAL PROTECTIVE EQUIPMENT (PPE)",
-                firstAidTitle: "FIRST AID - IN EMERGENCY",
-                skin: "Skin:", eyes: "Eyes:", ingestion: "Ingestion:", inhalation: "Inhalation:",
-                poisonCenterTitle: "National Poison Information Center (Rambam)",
-                whoToCall: "Who to call? (04-7771900)",
-                whoToCallDesc: "In case of suspected poisoning, exposure to chemicals. Professional advice 24/7.",
-                madaCall: "When to call 101 (MADA)?",
-                madaCallDesc: "In an immediate emergency: difficulty breathing, loss of consciousness, or collapse.",
-                supplier: "Supplier:",
-                medicalAdvice: "In any case of exposure, seek medical advice.",
-                emergency: "Emergency: 101 (MADA)"
-            },
-            russian: {
-                danger: "ОПАСНО ! DANGER",
-                warningsTitle: "ОСНОВНЫЕ ОПАСНОСТИ",
-                ppeTitle: "СРЕДСТВА ИНДИВИДУАЛЬНОЙ ЗАЩИТЫ (СИЗ)",
-                firstAidTitle: "ПЕРВАЯ ПОМОЩЬ",
-                skin: "Кожа:", eyes: "Глаза:", ingestion: "Проглатывание:", inhalation: "Вдыхание:",
-                poisonCenterTitle: "Центр информации об отравлениях (Рамбам)",
-                whoToCall: "Куда звонить? (04-7771900)",
-                whoToCallDesc: "Подозрение на отравление, воздействие химикатов. Консультация 24/7.",
-                madaCall: "Когда звонить 101? (Скорая)",
-                madaCallDesc: "Экстренные случаи: затрудненное дыхание, потеря сознания, коллапс.",
-                supplier: "Поставщик:",
-                medicalAdvice: "При любом воздействии обратиться к врачу",
-                emergency: "Emergency: 101"
-            },
-            hebrew: {
-                danger: "סכנה ! DANGER",
-                warningsTitle: "אזהרות חמורות",
-                ppeTitle: "ציוד מגן אישי חובה (PPE)",
-                firstAidTitle: "עזרה ראשונה - במקרה חירום",
-                skin: "מגע בעור:", eyes: "מגע בעיניים:", ingestion: "בליעה:", inhalation: "שאיפה:",
-                poisonCenterTitle: "המרכז הארצי למידע בהרעלות (רמב\"ם)",
-                whoToCall: "למי להתקשר? (04-7771900)",
-                whoToCallDesc: "במקרה של חשד להרעלה, חשיפה לכימיקלים. ייעוץ מקצועי 24/7.",
-                madaCall: "מתי להתקשר ל-101? (מד\"א)",
-                madaCallDesc: "במקרה חירום מיידי: קשיי נשימה, אובדן הכרה או התמוטטות.",
-                supplier: "ספק:",
-                medicalAdvice: "בכל מקרה של חשיפה יש לפנות לייעוץ רפואי",
-                emergency: "חרום: 101 (מד\"א)"
-            },
-            arabic: {
-                danger: "خطر ! DANGER",
-                warningsTitle: "تحذيرات شديدة",
-                ppeTitle: "معدات الحماية الشخصية الإلزامية (PPE)",
-                firstAidTitle: "الإسعافات الأولية - في حالات الطوارئ",
-                skin: "الجلد:", eyes: "العيون:", ingestion: "الابتلاع:", inhalation: "الاستنشاق:",
-                poisonCenterTitle: "المركز الوطني لمعلومات السموم (رمبام)",
-                whoToCall: "بمن تتصل؟ (04-7771900)",
-                whoToCallDesc: "في حالة الاشتباه في التسمم أو التعرض للمواد الكيميائية. استشارة مهنية على مدار الساعة.",
-                madaCall: "متى تتصل بـ 101 (نجمة داود الحمراء)؟",
-                madaCallDesc: "في حالات الطوارئ الفورية: صعوبة في التنفس، فقدان الوعي، أو الانهيار.",
-                supplier: "المورد:",
-                medicalAdvice: "في جميع حالات التعرض، اطلب استشارة طبية.",
-                emergency: "طوارئ: 101"
+      if (!response.ok) {
+        const details = await response.json().catch(() => ({}));
+        throw new Error(details.error?.message || `Gemini request failed with HTTP ${response.status}.`);
+      }
+
+      const result = await response.json();
+      const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error("AI returned no placard data.");
+      return validateExtractedData(JSON.parse(text));
+    }
+
+    function languageSchema() {
+      return {
+        type: "OBJECT",
+        properties: {
+          productName: { type: "STRING" },
+          description: { type: "STRING" },
+          hazards: { type: "ARRAY", items: { type: "STRING" } },
+          ppe: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                icon: { type: "STRING", enum: Object.keys(PPE_ICONS) },
+                text: { type: "STRING" }
+              },
+              required: ["icon", "text"]
             }
-        };
-
-        // Schema for Gemini API
-        const languageObjectSchema = {
+          },
+          firstAid: {
             type: "OBJECT",
             properties: {
-                productName: { type: "STRING" },
-                description: { type: "STRING" },
-                hazards: { type: "ARRAY", items: { type: "STRING" } },
-                pictogramText: { type: "STRING" },
-                ppe: {
-                    type: "ARRAY",
-                    items: {
-                        type: "OBJECT",
-                        properties: {
-                            icon: { type: "STRING" }, // e.g., glasses, hand-metal, shirt, wind
-                            text: { type: "STRING" }
-                        }
-                    }
-                },
-                firstAid: {
-                    type: "OBJECT",
-                    properties: {
-                        skin: { type: "STRING" },
-                        eyes: { type: "STRING" },
-                        ingestion: { type: "STRING" },
-                        inhalation: { type: "STRING" }
-                    }
-                },
-                supplierName: { type: "STRING" }
-            }
-        };
+              eyes: { type: "STRING" },
+              skin: { type: "STRING" },
+              ingestion: { type: "STRING" },
+              inhalation: { type: "STRING" }
+            },
+            required: ["eyes", "skin", "ingestion", "inhalation"]
+          },
+          supplierName: { type: "STRING" }
+        },
+        required: ["productName", "description", "hazards", "ppe", "firstAid", "supplierName"]
+      };
+    }
 
-        const responseSchema = {
-            type: "OBJECT",
-            properties: {
-                unNumber: { type: "STRING" },
-                pictograms: {
-                    type: "ARRAY",
-                    items: { type: "STRING", enum: ["GHS02", "GHS05", "GHS06", "GHS07", "GHS08", "GHS09"] }
-                },
-                english: languageObjectSchema,
-                russian: languageObjectSchema,
-                hebrew: languageObjectSchema,
-                arabic: languageObjectSchema
-            }
-        };
+    fileInput.addEventListener("change", async () => {
+      selectedFile = fileInput.files[0] || null;
+      selectedBase64 = null;
+      selectedMime = null;
+      extractBtn.disabled = true;
+      setStatus();
 
-        // Manual Pictogram Selection Logic
-        const pictoRadios = document.querySelectorAll('input[name="picto-mode"]');
-        const manualUi = document.getElementById('manual-pictograms-ui');
-        let selectedManualPictos = new Set();
+      if (!selectedFile) {
+        fileName.textContent = "No file selected";
+        return;
+      }
 
-        const ghsNames = {
-            "GHS01": "Explosive", "GHS02": "Flammable", "GHS03": "Oxidizer",
-            "GHS04": "Gas", "GHS05": "Corrosive", "GHS06": "Toxic",
-            "GHS07": "Harmful", "GHS08": "Health Hazard", "GHS09": "Environment"
-        };
+      if (!selectedFile.type.match(/^application\/pdf$|^image\//)) {
+        fileName.textContent = "Please choose a PDF or image file.";
+        setStatus("error", "Unsupported file type. Upload an SDS PDF, JPG, PNG, or other browser-readable image.");
+        return;
+      }
 
-        let pictoHtmlOptions = '';
-        for (let code in GHS_IMAGES) {
-            pictoHtmlOptions += `
-                <div class="picto-card cursor-pointer border-2 border-gray-200 rounded-lg p-2 flex flex-col items-center justify-center hover:bg-blue-50 transition select-none h-full" data-code="${code}">
-                    <img src="${GHS_IMAGES[code]}" alt="${code}" class="w-12 h-12 object-contain mix-blend-multiply mb-2 pointer-events-none" onerror="this.style.display='none'">
-                    <span class="text-[10px] font-bold text-center text-gray-700 leading-tight">${ghsNames[code]}</span>
-                </div>
-            `;
-        }
-        manualUi.innerHTML = pictoHtmlOptions;
+      fileName.textContent = `${selectedFile.name} (${Math.ceil(selectedFile.size / 1024)} KB)`;
+      selectedMime = selectedFile.type;
+      try {
+        selectedBase64 = await fileToBase64(selectedFile);
+        extractBtn.disabled = false;
+      } catch (error) {
+        setStatus("error", error.message);
+      }
+    });
 
-        document.querySelectorAll('.picto-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const code = card.dataset.code;
-                if (selectedManualPictos.has(code)) {
-                    selectedManualPictos.delete(code);
-                    card.classList.remove('border-blue-500', 'bg-blue-100');
-                    card.classList.add('border-gray-200');
-                } else {
-                    selectedManualPictos.add(code);
-                    card.classList.remove('border-gray-200');
-                    card.classList.add('border-blue-500', 'bg-blue-100');
-                }
-            });
-        });
+    ["dragenter", "dragover"].forEach(eventName => {
+      dropZone.addEventListener(eventName, event => {
+        event.preventDefault();
+        dropZone.style.borderColor = "var(--blue)";
+      });
+    });
 
-        pictoRadios.forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                if (e.target.value === 'manual') {
-                    manualUi.classList.remove('hidden');
-                } else {
-                    manualUi.classList.add('hidden');
-                }
-            });
-        });
+    ["dragleave", "drop"].forEach(eventName => {
+      dropZone.addEventListener(eventName, event => {
+        event.preventDefault();
+        dropZone.style.borderColor = "";
+      });
+    });
 
-        // File handling
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file && file.type === "application/pdf") {
-                fileNameDisplay.textContent = file.name;
-                generateBtn.disabled = false;
-                
-                const reader = new FileReader();
-                reader.onload = (evt) => {
-                    selectedFileBase64 = evt.target.result.split(',')[1];
-                };
-                reader.readAsDataURL(file);
-            } else {
-                fileNameDisplay.textContent = "Please select a valid PDF file.";
-                generateBtn.disabled = true;
-                selectedFileBase64 = null;
-            }
-        });
+    dropZone.addEventListener("drop", event => {
+      const file = event.dataTransfer.files[0];
+      if (!file) return;
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      fileInput.files = transfer.files;
+      fileInput.dispatchEvent(new Event("change"));
+    });
 
-        // API Call with Automatic Model Fallback
-        async function fetchGeminiData(base64Data, modelIndex = 0, attempt = 1) {
-            const apiKey = "AIzaSyB8t900vAQ2kR6jM5FPhRwmZfxwOWB_9j4";
-            
-            // Auto fallback array of models to try
-            const availableModels = [
-                "gemini-2.5-flash",
-                "gemini-3-flash-preview",
-                "gemini-3.1-flash-lite",
-                "gemini-2.0-flash"
-            ];
+    extractBtn.addEventListener("click", async () => {
+      setStatus("busy", "AI is reading the SDS and translating the safety placards...");
+      extractBtn.disabled = true;
+      try {
+        placardData = await extractWithGemini();
+        currentLanguage = "english";
+        renderAll();
+        setStatus();
+      } catch (error) {
+        setStatus("error", error.message || "Extraction failed.");
+      } finally {
+        extractBtn.disabled = !selectedBase64;
+      }
+    });
 
-            if (modelIndex >= availableModels.length) {
-                throw new Error("All AI models failed. Please check your API key or network connection.");
-            }
+    sampleBtn.addEventListener("click", () => {
+      placardData = structuredClone(sampleData);
+      currentLanguage = "english";
+      renderAll();
+      setStatus();
+    });
 
-            const modelName = availableModels[modelIndex];
-            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-            
-            loadingText.textContent = `Analyzing with ${modelName}... (Attempt ${attempt})`;
+    refreshBtn.addEventListener("click", renderAll);
+    printBtn.addEventListener("click", () => window.print());
 
-            const prompt = `You are a hazardous materials safety expert. I have uploaded an SDS (Safety Data Sheet) PDF. 
-            Extract the safety information and format it exactly according to the schema provided.
-            Translate the output into English, Russian, Hebrew, and Arabic.
-            Keep hazard warnings concise but impactful (like "Causes severe burns!").
-            For PPE, select exactly 4 mandatory items. Use valid Lucide icon names for 'icon' (e.g., 'glasses', 'hand-metal', 'shirt', 'wind', 'footprints').
-            Identify the correct UN number. If none, write "N/A".
-            Identify the GHS pictograms required (GHS02, GHS05, GHS06, GHS07, GHS08, GHS09).`;
-
-            const payload = {
-                contents: [{
-                    role: "user",
-                    parts: [
-                        { text: prompt },
-                        { inlineData: { mimeType: "application/pdf", data: base64Data } }
-                    ]
-                }],
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: responseSchema
-                }
-            };
-
-            try {
-                const response = await fetch(endpoint, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(`HTTP ${response.status}: ${errorData.error?.message || response.statusText}`);
-                }
-                
-                const json = await response.json();
-                return JSON.parse(json.candidates[0].content.parts[0].text);
-                
-            } catch (error) {
-                console.warn(`Model ${modelName} failed on attempt ${attempt}: ${error.message}`);
-                
-                // If it's a 404/403 error (model not available for this key), or max attempts reached -> move to next model
-                if (error.message.includes('HTTP 404') || error.message.includes('HTTP 403') || attempt >= 3) {
-                    console.log(`Fallback to next model...`);
-                    return fetchGeminiData(base64Data, modelIndex + 1, 1);
-                } else {
-                    // Exponential backoff for network/500 errors on the SAME model
-                    const delay = Math.pow(2, attempt - 1) * 1000;
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    return fetchGeminiData(base64Data, modelIndex, attempt + 1);
-                }
-            }
-        }
-
-        // Generate HTML for a single language page
-        function renderPageHTML(lang, data, unNumber, pictograms) {
-            const ui = UI_TRANSLATIONS[lang];
-            const isRTL = (lang === 'hebrew' || lang === 'arabic');
-            const dirClass = isRTL ? 'flex-row-reverse' : 'flex-row';
-            const alignClass = isRTL ? 'text-right' : 'text-left';
-            const marginClass = isRTL ? 'ml-4' : 'mr-4';
-            const fontClass = `${lang}-text`;
-
-            let hazardItems = data.hazards.map(h => `<li>${h}</li>`).join('');
-            
-            let ppeItems = data.ppe.slice(0,4).map(p => `
-                <div class="flex flex-col items-center w-1/4">
-                    <div class="circle-symbol"><i data-lucide="${p.icon || 'shield'}" size="32"></i></div>
-                    <span class="font-bold leading-tight">${p.text}</span>
-                </div>
-            `).join('');
-
-            let firstAidItems = '';
-            const faMap = [
-                { icon: 'eye', title: ui.eyes, text: data.firstAid.eyes },
-                { icon: 'droplets', title: ui.skin, text: data.firstAid.skin },
-                { icon: 'skull', title: ui.ingestion, text: data.firstAid.ingestion },
-                { icon: 'wind', title: ui.inhalation, text: data.firstAid.inhalation }
-            ];
-            
-            faMap.forEach(fa => {
-                if (fa.text && fa.text.trim() !== "") {
-                    firstAidItems += `
-                    <div class="flex items-center gap-4">
-                        <div class="bg-green-600 text-white p-2 rounded-full"><i data-lucide="${fa.icon}" size="24"></i></div>
-                        <div>
-                            <span class="font-bold text-green-800 block">${fa.title}</span>
-                            ${fa.text}
-                        </div>
-                    </div>`;
-                }
-            });
-
-            let pictoHtml = pictograms.map(code => `
-                <img src="${GHS_IMAGES[code]}" alt="${code}" class="w-[70px] h-[70px] object-contain drop-shadow-sm mix-blend-multiply" onerror="this.style.display='none'">
-            `).join('');
-
-            return `
-            <div class="a4-page ${fontClass} border-t-8 border-red-600">
-                <!-- Header -->
-                <header class="text-center border-b-4 border-black pb-4 mb-6">
-                    <h1 class="text-5xl font-black text-red-600 uppercase mb-2">${ui.danger}</h1>
-                    <div class="flex items-center justify-center gap-4">
-                        <div class="bg-black text-white text-3xl font-bold py-2 px-4 inline-block rounded">
-                            ${data.productName}
-                        </div>
-                        <div class="border-2 border-black text-black text-3xl font-bold py-2 px-4 inline-block rounded">
-                            UN ${unNumber}
-                        </div>
-                    </div>
-                    <p class="text-xl mt-2 font-bold text-gray-700">${data.description}</p>
-                </header>
-
-                <!-- Hazards -->
-                <div class="flex ${dirClass} justify-between items-start mb-6 bg-red-50 p-4 border-2 border-red-500 rounded-lg">
-                    <div class="flex-1 ${alignClass}">
-                        <h2 class="text-3xl font-bold text-red-700 mb-4 underline">${ui.warningsTitle}</h2>
-                        <ul class="list-disc list-inside space-y-2 text-xl font-bold text-gray-900">
-                            ${hazardItems}
-                        </ul>
-                    </div>
-                    <div class="flex flex-col items-center justify-center ${marginClass} w-1/3">
-                        <div class="grid grid-cols-2 gap-3 justify-items-center mb-2">
-                            ${pictoHtml}
-                        </div>
-                        <div class="text-xs font-bold text-center text-red-700 uppercase">${data.pictogramText}</div>
-                    </div>
-                </div>
-
-                <!-- PPE -->
-                <div class="mb-6">
-                    <div class="bg-blue-600 text-white p-2 rounded-t-lg">
-                        <h3 class="text-2xl font-bold text-center">${ui.ppeTitle}</h3>
-                    </div>
-                    <div class="border-2 border-blue-600 border-t-0 p-4 rounded-b-lg flex flex-wrap justify-around text-center">
-                        ${ppeItems}
-                    </div>
-                </div>
-
-                <!-- First Aid -->
-                <div class="mb-6 flex-grow">
-                    <div class="bg-green-600 text-white p-2 rounded-t-lg">
-                        <h3 class="text-2xl font-bold text-center">${ui.firstAidTitle}</h3>
-                    </div>
-                    <div class="border-2 border-green-600 border-t-0 p-6 rounded-b-lg bg-green-50">
-                        <div class="grid grid-cols-1 gap-4 text-lg">
-                            ${firstAidItems}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Poison Info -->
-                <div class="mb-2 bg-yellow-50 border-2 border-yellow-600 rounded-lg p-4 shadow-sm flex-grow">
-                    <div class="flex items-center justify-between border-b border-yellow-300 pb-2 mb-3">
-                        <h3 class="text-xl font-bold text-yellow-900 flex items-center">
-                            <i data-lucide="phone-call" class="inline-block ${isRTL ? 'ml-2' : 'mr-2'}"></i>
-                            ${ui.poisonCenterTitle}
-                        </h3>
-                        <span class="text-2xl font-black text-red-600">04-7771900</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 text-sm">
-                        <div class="bg-white p-3 rounded border border-yellow-200 shadow-sm ${alignClass}">
-                            <span class="block font-bold text-blue-700 mb-1 text-lg">${ui.whoToCall}</span>
-                            <p>${ui.whoToCallDesc}</p>
-                        </div>
-                        <div class="bg-white p-3 rounded border border-red-200 shadow-sm ${alignClass}">
-                            <span class="block font-bold text-red-700 mb-1 text-lg">${ui.madaCall}</span>
-                            <p>${ui.madaCallDesc}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Footer -->
-                <div class="mt-auto border-t-2 border-gray-300 pt-4 text-center text-gray-600 text-sm">
-                    <div class="flex justify-between items-center ${dirClass}">
-                        <span>${ui.supplier} ${data.supplierName}</span>
-                        <span>${ui.medicalAdvice}</span>
-                        <span>${ui.emergency}</span>
-                    </div>
-                </div>
-            </div>`;
-        }
-
-        // Main execution
-        generateBtn.addEventListener('click', async () => {
-            if (!selectedFileBase64) return;
-            
-            const pictoMode = document.querySelector('input[name="picto-mode"]:checked').value;
-            
-            generateBtn.classList.add('hidden');
-            errorState.classList.add('hidden');
-            loadingState.classList.remove('hidden');
-            loadingState.classList.add('flex');
-
-            try {
-                const apiResult = await fetchGeminiData(selectedFileBase64);
-                
-                let finalPictograms = [];
-                if (pictoMode === 'manual') {
-                    finalPictograms = Array.from(selectedManualPictos);
-                } else {
-                    finalPictograms = apiResult.pictograms || [];
-                }
-                
-                let allPagesHtml = '';
-                const languages = ['english', 'russian', 'hebrew', 'arabic'];
-                
-                languages.forEach(lang => {
-                    if(apiResult[lang]) {
-                        allPagesHtml += renderPageHTML(lang, apiResult[lang], apiResult.unNumber, finalPictograms);
-                    }
-                });
-
-                placardContainer.innerHTML = allPagesHtml;
-                window.lucide.createIcons();
-
-                uploadScreen.classList.add('hidden');
-                loadingState.classList.add('hidden');
-                controlBar.classList.remove('hidden');
-                placardContainer.classList.remove('hidden');
-                
-            } catch (err) {
-                console.error(err);
-                errorMessage.textContent = err.message || "Failed to process the PDF. Please check your connection or try another file.";
-                loadingState.classList.add('hidden');
-                loadingState.classList.remove('flex');
-                generateBtn.classList.remove('hidden');
-                errorState.classList.remove('hidden');
-            }
-        });
-    </script>
+    validateIsoSymbols().finally(renderAll);
+  </script>
 </body>
 </html>
