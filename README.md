@@ -46,16 +46,42 @@ Adding another provider is just one entry in the `PROVIDERS` map plus an
 
 ## Host it online for free
 
-The app is static, so any static host works. **GitHub Pages** is wired up:
+The app is a pure static site (no build step), so any static host works.
+Config for three free options is included.
 
-1. A workflow lives at `.github/workflows/deploy-pages.yml`.
-2. In the repo, go to **Settings → Pages → Build and deployment** and set
-   **Source: GitHub Actions**.
-3. Push to `main` (or run the workflow manually). The site publishes to
-   `https://<user>.github.io/<repo>/`.
+### Netlify (free for private repos) — recommended
 
-Other free options that work the same way (point them at this repo, no build
-command, output directory = root): **Cloudflare Pages**, **Netlify**, **Vercel**.
+Ready via `netlify.toml`.
+
+1. Go to <https://app.netlify.com> → **Add new site → Import an existing project**.
+2. Connect GitHub and pick this repository.
+3. Build settings are read from `netlify.toml` (publish `.`, no build command) —
+   just click **Deploy**. Every push to the default branch redeploys.
+
+### Vercel (free for private repos)
+
+Ready via `vercel.json`.
+
+1. Go to <https://vercel.com/new> and import this repository.
+2. Framework Preset: **Other** (already set to no build via `vercel.json`).
+3. Click **Deploy**. Pushes auto-redeploy; PRs get preview URLs.
+
+### GitHub Pages
+
+Wired up via `.github/workflows/deploy-pages.yml`, **but note:**
+
+- **Pages must be enabled once manually:** repo **Settings → Pages → Build and
+  deployment → Source: GitHub Actions**. The workflow's `GITHUB_TOKEN` cannot
+  create the Pages site itself (`enablement: true` returns
+  *"Resource not accessible by integration"*), so this one-time toggle is
+  required. After it, pushes to `main` publish to `https://<user>.github.io/<repo>/`.
+- **Private repos need a paid plan** (Pro/Team/Enterprise) for Pages. On the
+  free plan, either make the repo public or use Netlify/Vercel above, which are
+  free for private repos.
+
+> Security note: nothing sensitive is committed — AI API keys are entered by
+> each user at runtime and kept only in their browser tab — so making the repo
+> public to use free GitHub Pages is low-risk if you prefer that route.
 
 ### Run locally
 
