@@ -1,0 +1,17 @@
+# Netlify deployment config for the SDS AI Safety Placard Generator.
+# The app is a pure static site (index.html + images at the repo root),
+# so there is no build step — Netlify just publishes the root directory.
+#
+# Setup: app.netlify.com -> Add new site -> Import from Git -> pick this repo.
+# Netlify is free for private repositories. These settings are detected
+# automatically from this file; no dashboard configuration is needed.
+
+[build]
+  publish = "."
+  command = ""
+
+# Long-cache the static icon/image assets; they are content-stable.
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
