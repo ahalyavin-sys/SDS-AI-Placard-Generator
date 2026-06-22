@@ -485,6 +485,8 @@
       gap: 3mm;
       padding: 3.5mm;
       background: #f0fff6;
+      font-size: 11.5px;
+      align-content: start;
     }
 
     .aid-row {
@@ -492,8 +494,8 @@
       grid-template-columns: 11mm 1fr;
       gap: 2.5mm;
       align-items: start;
-      font-size: 11.5px;
-      line-height: 1.2;
+      font-size: 1em;
+      line-height: 1.25;
     }
 
     .rtl .aid-row { grid-template-columns: 1fr 11mm; }
@@ -1364,6 +1366,32 @@
 
     function renderPages() {
       pages.innerHTML = LANGUAGES.map(renderPlacard).join("");
+      requestAnimationFrame(fitFirstAidBlocks);
+    }
+
+    // The first-aid block is the flexible (1fr) row of the placard, so short
+    // texts leave empty space below. Grow the font to fill the available
+    // height (and shrink dense texts so they never overflow) for readability.
+    function fitFirstAidBlocks() {
+      const MIN = 9.5, MAX = 18, STEP = 0.5;
+      document.querySelectorAll(".placard .block.first-aid").forEach(block => {
+        const grid = block.querySelector(".first-aid-grid");
+        if (!grid) return;
+        const header = block.querySelector("h3");
+        const available = block.clientHeight - (header ? header.offsetHeight : 0);
+        if (available <= 0) return;
+
+        let size = MIN;
+        grid.style.fontSize = size + "px";
+        while (size + STEP <= MAX) {
+          grid.style.fontSize = (size + STEP) + "px";
+          if (grid.scrollHeight > available) {
+            grid.style.fontSize = size + "px";
+            break;
+          }
+          size += STEP;
+        }
+      });
     }
 
     function renderAll() {
@@ -1725,6 +1753,8 @@
 
     initProvider();
     validateIsoSymbols().finally(renderAll);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitFirstAidBlocks);
+    window.addEventListener("resize", () => requestAnimationFrame(fitFirstAidBlocks));
   </script>
 </body>
 </html>
