@@ -485,6 +485,8 @@
       gap: 3mm;
       padding: 3.5mm;
       background: #f0fff6;
+      font-size: 11.5px;
+      align-content: start;
     }
 
     .aid-row {
@@ -492,8 +494,8 @@
       grid-template-columns: 11mm 1fr;
       gap: 2.5mm;
       align-items: start;
-      font-size: 11.5px;
-      line-height: 1.2;
+      font-size: 1em;
+      line-height: 1.25;
     }
 
     .rtl .aid-row { grid-template-columns: 1fr 11mm; }
@@ -1044,6 +1046,16 @@
       return normalizeLines(lines).join("\n");
     }
 
+    // The placard already prints a "UN" label above the number, so the value
+    // itself must be digits only. Strip any leading "UN" prefix the SDS/AI may
+    // include (e.g. "UN1268" -> "1268") to keep it inside the box.
+    function normalizeUnNumber(value) {
+      const raw = String(value ?? "").trim();
+      if (!raw) return "N/A";
+      const digits = raw.replace(/^un[\s\-:.]*/i, "").match(/\d+/);
+      return digits ? digits[0] : (raw.toUpperCase() === "N/A" ? "N/A" : raw);
+    }
+
     function setStatus(type, message) {
       busyStatus.classList.remove("show");
       errorStatus.classList.remove("show");
@@ -1154,7 +1166,7 @@
 
     function updateData(path, value) {
       if (path === "unNumber") {
-        placardData.unNumber = value.trim() || "N/A";
+        placardData.unNumber = normalizeUnNumber(value);
         return;
       }
 
@@ -1354,6 +1366,32 @@
 
     function renderPages() {
       pages.innerHTML = LANGUAGES.map(renderPlacard).join("");
+      requestAnimationFrame(fitFirstAidBlocks);
+    }
+
+    // The first-aid block is the flexible (1fr) row of the placard, so short
+    // texts leave empty space below. Grow the font to fill the available
+    // height (and shrink dense texts so they never overflow) for readability.
+    function fitFirstAidBlocks() {
+      const MIN = 9.5, MAX = 18, STEP = 0.5;
+      document.querySelectorAll(".placard .block.first-aid").forEach(block => {
+        const grid = block.querySelector(".first-aid-grid");
+        if (!grid) return;
+        const header = block.querySelector("h3");
+        const available = block.clientHeight - (header ? header.offsetHeight : 0);
+        if (available <= 0) return;
+
+        let size = MIN;
+        grid.style.fontSize = size + "px";
+        while (size + STEP <= MAX) {
+          grid.style.fontSize = (size + STEP) + "px";
+          if (grid.scrollHeight > available) {
+            grid.style.fontSize = size + "px";
+            break;
+          }
+          size += STEP;
+        }
+      });
     }
 
     function renderAll() {
@@ -1374,7 +1412,7 @@
 
     function validateExtractedData(raw) {
       const next = structuredClone(sampleData);
-      next.unNumber = String(raw.unNumber || "N/A");
+      next.unNumber = normalizeUnNumber(raw.unNumber);
       next.pictograms = Array.isArray(raw.pictograms)
         ? raw.pictograms.filter(code => GHS_IMAGES[code]).slice(0, 6)
         : [];
@@ -1454,7 +1492,8 @@
         `For every PPE item choose the best ISO 7010 mandatory sign code from: ${Object.keys(PPE_ICONS).join(", ")}.`,
         "Use only these meanings: M003 ear protection, M004 eye protection, M008 safety footwear, M009 protective gloves, M010 protective clothing, M013 face shield, M014 head protection, M015 high visibility clothing, M016 mask, M017 respiratory protection, M026 protective apron, M059 laboratory coat.",
         "If SDS text says respirator, respiratory protection, vapour, vapor, or breathing protection choose M017. If it says mask or dust mask choose M016. If it says apron choose M026. If it says lab coat choose M059. If it says gloves choose M009.",
-        "For first aid include eyes, skin, ingestion, and inhalation. If supplier is missing, write N/A."
+        "For first aid include eyes, skin, ingestion, and inhalation. If supplier is missing, write N/A.",
+        "For unNumber give the digits only, with no 'UN' prefix (for example 1268, not UN1268). If there is no UN number, write N/A."
       ];
       if (forJsonText) {
         lines.push(
@@ -1714,6 +1753,8 @@
 
     initProvider();
     validateIsoSymbols().finally(renderAll);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitFirstAidBlocks);
+    window.addEventListener("resize", () => requestAnimationFrame(fitFirstAidBlocks));
   </script>
 </body>
 </html>
