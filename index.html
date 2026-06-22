@@ -1044,6 +1044,16 @@
       return normalizeLines(lines).join("\n");
     }
 
+    // The placard already prints a "UN" label above the number, so the value
+    // itself must be digits only. Strip any leading "UN" prefix the SDS/AI may
+    // include (e.g. "UN1268" -> "1268") to keep it inside the box.
+    function normalizeUnNumber(value) {
+      const raw = String(value ?? "").trim();
+      if (!raw) return "N/A";
+      const digits = raw.replace(/^un[\s\-:.]*/i, "").match(/\d+/);
+      return digits ? digits[0] : (raw.toUpperCase() === "N/A" ? "N/A" : raw);
+    }
+
     function setStatus(type, message) {
       busyStatus.classList.remove("show");
       errorStatus.classList.remove("show");
@@ -1154,7 +1164,7 @@
 
     function updateData(path, value) {
       if (path === "unNumber") {
-        placardData.unNumber = value.trim() || "N/A";
+        placardData.unNumber = normalizeUnNumber(value);
         return;
       }
 
@@ -1374,7 +1384,7 @@
 
     function validateExtractedData(raw) {
       const next = structuredClone(sampleData);
-      next.unNumber = String(raw.unNumber || "N/A");
+      next.unNumber = normalizeUnNumber(raw.unNumber);
       next.pictograms = Array.isArray(raw.pictograms)
         ? raw.pictograms.filter(code => GHS_IMAGES[code]).slice(0, 6)
         : [];
@@ -1454,7 +1464,8 @@
         `For every PPE item choose the best ISO 7010 mandatory sign code from: ${Object.keys(PPE_ICONS).join(", ")}.`,
         "Use only these meanings: M003 ear protection, M004 eye protection, M008 safety footwear, M009 protective gloves, M010 protective clothing, M013 face shield, M014 head protection, M015 high visibility clothing, M016 mask, M017 respiratory protection, M026 protective apron, M059 laboratory coat.",
         "If SDS text says respirator, respiratory protection, vapour, vapor, or breathing protection choose M017. If it says mask or dust mask choose M016. If it says apron choose M026. If it says lab coat choose M059. If it says gloves choose M009.",
-        "For first aid include eyes, skin, ingestion, and inhalation. If supplier is missing, write N/A."
+        "For first aid include eyes, skin, ingestion, and inhalation. If supplier is missing, write N/A.",
+        "For unNumber give the digits only, with no 'UN' prefix (for example 1268, not UN1268). If there is no UN number, write N/A."
       ];
       if (forJsonText) {
         lines.push(
