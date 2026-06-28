@@ -1,7 +1,11 @@
 name: Deploy to GitHub Pages
 
-# Publishes the static site (index.html + images) to GitHub Pages.
+# Builds the Vite app and publishes dist/ to GitHub Pages.
 # Enable once in the repo: Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
+#
+# Note: this builds with Vite's default base path "/", which suits a user/org
+# root Pages site. For a project subpath site, set `base` in vite.config.ts.
+# Netlify/Vercel (see README) are the recommended free hosts.
 
 on:
   push:
@@ -28,6 +32,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
@@ -38,8 +54,7 @@ jobs:
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # The app is fully static, so upload the repository root as-is.
-          path: .
+          path: dist
 
       - name: Deploy to GitHub Pages
         id: deployment

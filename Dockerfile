@@ -1,9 +1,14 @@
-# Use standard lightweight Nginx image to serve static files
-FROM nginx:alpine
+# Multi-stage build: compile the Vite app, then serve the static dist/ with Nginx.
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
 
-# Copy ALL files from your repository (including index.html and the images folder)
-# to the Nginx public folder
-COPY . /usr/share/nginx/html/
+# Serve the built static files.
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html/
 
 # Expose port 8080 (Cloud Run's default expected port)
 EXPOSE 8080
